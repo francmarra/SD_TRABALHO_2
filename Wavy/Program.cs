@@ -6,27 +6,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using Shared.Models;
 using Shared.RabbitMQ;
+using Shared.MongoDB;
 
 class Program
 {
-    // Config da Wavy
-    static readonly string configWavyPath = Path.GetFullPath(
-        Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
-            "..", "..", "..", "..",     // sobe para a raiz do projecto
-            "Config",
-            "config_wavy.csv"
-        )
-    );
-
     static RabbitMQRpcClient? rpcClient;
+    static ConfigService? configService;
     static string wavyID = "";
     static string wavyRegion = "";
     static string rpcQueueName = "";
-    static volatile bool encerrarExecucao = false;
-
-    static async Task Main()
+    static volatile bool encerrarExecucao = false;    static async Task Main()
     {
+        // Initialize configuration service
+        configService = new ConfigService();
+
         // Loop até que um ID válido seja fornecido
         while (true)
         {
@@ -37,24 +30,24 @@ class Program
                 Console.WriteLine("ID inválido. O ID deve estar no formato <Região>_WavyXX (ex: N_Wavy01).");
                 continue;
             }
-            if (!IsWavyConfigured(wavyID))
+            if (!await IsWavyConfiguredAsync(wavyID))
             {
                 Console.WriteLine($"Wavy {wavyID} não está configurada! Insira um ID válido.");
                 continue;
             }
 
             // Status
-            var status = GetWavyStatus(wavyID);
+            var status = await GetWavyStatusAsync(wavyID);
             if (status == "0")
             {
                 Console.WriteLine($"{wavyID} Offline! Deseja voltar a ligá-la? (y/n) [y]: ");
-                string input = Console.ReadLine()?.Trim().ToLower();
+                string input = (Console.ReadLine() ?? "").Trim().ToLower();
                 // Se o input for y ou Enter
                 if (string.IsNullOrEmpty(input) || input == "y")
                 {
-                    UpdateWavyStatus(wavyID, "1");
+                    await UpdateWavyStatusAsync(wavyID, "1");
                     // Atualiza também o Timestamp
-                    UpdateWavyLastSync(wavyID, DateTime.Now);
+                    await UpdateWavyLastSyncAsync(wavyID, DateTime.Now);
                     Console.WriteLine($"{wavyID} foi atualizado para Online.");
                 }
                 else
@@ -188,11 +181,10 @@ class Program
                 };
 
                 var response = await rpcClient.CallAsync(rpcQueueName, request, TimeSpan.FromSeconds(10));
-                
-                if (response.Status == "OK")
+                  if (response.Status == "OK")
                 {
                     Console.WriteLine($"[{wavyID}] Dados enviados com sucesso: {response.Message}");
-                    UpdateWavyLastSync(wavyID, DateTime.Now);
+                    await UpdateWavyLastSyncAsync(wavyID, DateTime.Now);
                 }
                 else
                 {
@@ -241,68 +233,52 @@ class Program
                 break;
             }
         }
-    }
-
-    // Verifica se a wavy é configurada
-    static bool IsWavyConfigured(string wavyID)
+    }    // Verifica se a wavy é configurada
+    static async Task<bool> IsWavyConfiguredAsync(string wavyID)
     {
         try
         {
-            if (!File.Exists(configWavyPath))
-                return false;
-            var lines = File.ReadAllLines(configWavyPath);
-            // Skip header line.
-            foreach (var line in lines.Skip(1))
-            {
-                var parts = line.Split(',');
-                if (parts.Length >= 3)
-                {
-                    if (parts[0].Trim().Equals(wavyID, StringComparison.OrdinalIgnoreCase))
-                        return true;
-                }
-            }
+            if (configService == null) return false;
+            
+            var config = await configService.GetWavyConfigAsync(wavyID);
+            return config != null;
         }
-        catch { }
-        return false;
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao verificar configuração da wavy: {ex.Message}");
+            return false;
+        }
     }
 
     // Pega no status da wavy 0/1
-    static string GetWavyStatus(string wavyID)
+    static async Task<string> GetWavyStatusAsync(string wavyID)
     {
         try
         {
-            var lines = File.ReadAllLines(configWavyPath);
-            foreach (var line in lines.Skip(1))
-            {
-                var parts = line.Split(',');
-                if (parts.Length >= 3)
-                {
-                    if (parts[0].Trim().Equals(wavyID, StringComparison.OrdinalIgnoreCase))
-                        return parts[1].Trim();
-                }
-            }
+            if (configService == null) return "0";
+            
+            var config = await configService.GetWavyConfigAsync(wavyID);
+            return config?.Status.ToString() ?? "0";
         }
-        catch { }
-        return "0";
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao obter status da wavy: {ex.Message}");
+            return "0";
+        }
     }
 
     // Dá update no status da wavy
-    static void UpdateWavyStatus(string wavyID, string newStatus)
+    static async Task UpdateWavyStatusAsync(string wavyID, string newStatus)
     {
         try
         {
-            var lines = File.ReadAllLines(configWavyPath).ToList();
-            for (int i = 1; i < lines.Count; i++)
+            if (configService == null) return;
+            
+            var config = await configService.GetWavyConfigAsync(wavyID);
+            if (config != null)
             {
-                var parts = lines[i].Split(',');
-                if (parts.Length >= 3 && parts[0].Trim().Equals(wavyID, StringComparison.OrdinalIgnoreCase))
-                {
-                    parts[1] = newStatus;
-                    lines[i] = string.Join(",", parts);
-                    break;
-                }
+                await configService.UpdateWavyStatusAsync(wavyID, int.Parse(newStatus), config.LastSync);
             }
-            File.WriteAllLines(configWavyPath, lines);
         }
         catch (Exception ex)
         {
@@ -311,22 +287,17 @@ class Program
     }
 
     // Dá update no timestamp da wavy
-    static void UpdateWavyLastSync(string wavyID, DateTime timestamp)
+    static async Task UpdateWavyLastSyncAsync(string wavyID, DateTime timestamp)
     {
         try
         {
-            var lines = File.ReadAllLines(configWavyPath).ToList();
-            for (int i = 1; i < lines.Count; i++)
+            if (configService == null) return;
+            
+            var config = await configService.GetWavyConfigAsync(wavyID);
+            if (config != null)
             {
-                var parts = lines[i].Split(',');
-                if (parts.Length >= 3 && parts[0].Trim().Equals(wavyID, StringComparison.OrdinalIgnoreCase))
-                {
-                    parts[2] = timestamp.ToString("o");
-                    lines[i] = string.Join(",", parts);
-                    break;
-                }
+                await configService.UpdateWavyStatusAsync(wavyID, config.Status, timestamp);
             }
-            File.WriteAllLines(configWavyPath, lines);
         }
         catch (Exception ex)
         {

@@ -3,27 +3,19 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Shared.Models;
 using Shared.RabbitMQ;
+using Shared.MongoDB;
 
 class Program
 {
-    // Caminho para o ficheiro de Config
-    static readonly string configAgrPath = Path.GetFullPath(
-        Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
-            "..", "..", "..", "..",     // sobe até à raiz do projecto
-            "Config",                   // desce para a pasta Config
-            "config_agr.csv"            // nome do ficheiro
-        )
-    );
-
     static readonly ConcurrentQueue<WavyMessage> dataQueue = new();
     static RabbitMQRpcServer? rpcServer;
     static RabbitMQPublisher? publisher;
+    static ConfigService? configService;
     static volatile bool encerrarExecucao = false;
 
     static string aggregatorID = "";
     static string aggregatorRegion = "";
-    static string rpcQueueName = "";    static async Task Main()
+    static string rpcQueueName = "";static async Task Main()
     {
         Console.Write("ID do Agregador: ");
         aggregatorID = Console.ReadLine()?.Trim() ?? "";
@@ -31,14 +23,16 @@ class Program
         {
             Console.WriteLine("ID inválido. O ID deve estar no formato <Região>_Agr (exemplo: N_Agr).");
             return;
-        }
-        aggregatorRegion = aggregatorID.Split('_')[0];
+        }        aggregatorRegion = aggregatorID.Split('_')[0];
         rpcQueueName = RabbitMQConfig.RPC_QUEUE_PREFIX + aggregatorRegion;
 
+        // Initialize configuration service
+        configService = new ConfigService();
+
         // Verifica se o agregador está configurado
-        if (!IsAggregatorConfigured(aggregatorID))
+        if (!await IsAggregatorConfiguredAsync(aggregatorID))
         {
-            Console.WriteLine($"Agregador {aggregatorID} não está configurado no arquivo de configuração.");
+            Console.WriteLine($"Agregador {aggregatorID} não está configurado no banco de dados.");
             return;
         }
 
@@ -78,37 +72,37 @@ class Program
         rpcServer?.Dispose();
         publisher?.Dispose();
         Console.WriteLine($"[{aggregatorID}] RabbitMQ resources cleaned up.");
-    }    static async Task<RpcResponse> HandleRpcRequest(RpcRequest request)
+    }    static Task<RpcResponse> HandleRpcRequest(RpcRequest request)
     {
         try
         {
             switch (request.Type?.ToUpper())
             {
                 case "HANDSHAKE":
-                    return HandleHandshake(request);
+                    return Task.FromResult(HandleHandshake(request));
                 
                 case "DATA":
-                    return HandleDataRequest(request);
+                    return Task.FromResult(HandleDataRequest(request));
                 
                 case "SHUTDOWN":
-                    return HandleShutdownRequest(request);
+                    return Task.FromResult(HandleShutdownRequest(request));
                 
                 default:
-                    return new RpcResponse
+                    return Task.FromResult(new RpcResponse
                     {
                         Status = "ERROR",
                         Message = "Tipo de request não reconhecido"
-                    };
+                    });
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[{aggregatorID}] Erro ao processar RPC request: {ex.Message}");
-            return new RpcResponse
+            return Task.FromResult(new RpcResponse
             {
                 Status = "ERROR",
                 Message = ex.Message
-            };
+            });
         }
     }
 
@@ -279,26 +273,19 @@ class Program
 
             await Task.Delay(100);
         }
-    }
-
-    static bool IsAggregatorConfigured(string aggregatorID)
+    }    static async Task<bool> IsAggregatorConfiguredAsync(string aggregatorID)
     {
         try
         {
-            if (!File.Exists(configAgrPath))
-                return false;
+            if (configService == null) return false;
             
-            var lines = File.ReadAllLines(configAgrPath);
-            foreach (var line in lines.Skip(1)) // Skip header
-            {
-                var parts = line.Split(',');
-                if (parts.Length >= 2 && parts[0].Trim().Equals(aggregatorID, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
+            var config = await configService.GetAgrConfigAsync(aggregatorID);
+            return config != null;
         }
-        catch { }
-        return false;
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao verificar configuração do agregador: {ex.Message}");
+            return false;
+        }
     }
 }
