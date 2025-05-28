@@ -167,8 +167,8 @@ npm start
 
 #### Using the Interface
 1. **Start Central Server** - Click "Start Server" or use `Ctrl+Shift+S`
-2. **Deploy Regions** - Click individual region buttons (North, South, East, West)
-3. **Full System** - Click "Start All" to deploy complete 4-region system
+2. **Deploy Continents** - Click individual continent buttons (Europe, North America, South America, Africa, Asia, Oceania, Antarctica)
+3. **Full System** - Click "Start All" to deploy complete 7-continent system
 4. **Monitor Processes** - Watch real-time output in the terminal panels
 5. **Send Commands** - Use the command input to send `DLG` for graceful shutdown
 
@@ -191,20 +191,20 @@ npm start
    dotnet run
    ```
 
-2. **Regional Aggregator** (Terminal 2):
+2. **Continental Aggregator** (Terminal 2):
    ```powershell
    cd .\Agregador
-   dotnet run N_Agr  # North region aggregator
+   dotnet run EU-Agr01  # Europe continent aggregator
    ```
 
 3. **Wavy Sensors** (Terminal 3 & 4):
    ```powershell
    cd .\Wavy
-   dotnet run N_Wavy01  # North region sensor 1
+   dotnet run EU-Wavy01  # Europe continent sensor 1
    
    # In another terminal
    cd .\Wavy
-   dotnet run N_Wavy02  # North region sensor 2
+   dotnet run EU-Wavy02  # Europe continent sensor 2
    ```
 
 ### Option 3: Batch File Quick Start
@@ -223,51 +223,54 @@ npm start
 
 ## System Configuration
 
-### Regional Setup
+### Continental Setup
 
-The system supports four geographic regions:
+The system supports seven geographic continents:
 
-- **North Region**: `N_Agr`, `N_Wavy01`, `N_Wavy02`
-- **South Region**: `S_Agr`, `S_Wavy01`, `S_Wavy02`
-- **East Region**: `E_Agr`, `E_Wavy01`, `E_Wavy02`
-- **West Region**: `W_Agr`, `W_Wavy01`, `W_Wavy02`
+- **Europe (EU)**: `EU-Agr01`, `EU-Wavy01`, `EU-Wavy02`
+- **North America (NA)**: `NA-Agr01`, `NA-Wavy01`, `NA-Wavy02`
+- **South America (SA)**: `SA-Agr01`, `SA-Wavy01`, `SA-Wavy02`
+- **Africa (AF)**: `AF-Agr01`, `AF-Wavy01`, `AF-Wavy02`
+- **Asia (AS)**: `AS-Agr01`, `AS-Wavy01`, `AS-Wavy02`
+- **Oceania (OC)**: `OC-Agr01`, `OC-Wavy01`, `OC-Wavy02`
+- **Antarctica (AQ)**: `AQ-Agr01`, `AQ-Wavy01`, `AQ-Wavy02`
 
 ### Component Naming Convention
 
 #### Aggregators
-- Format: `<Region>_Agr`
-- Examples: `N_Agr`, `S_Agr`, `E_Agr`, `W_Agr`
+- Format: `<Continent>-Agr<NN>`
+- Examples: `EU-Agr01`, `NA-Agr01`, `AS-Agr01`, `AF-Agr01`
 
 #### Wavy Sensors
-- Format: `<Region>_Wavy<NN>`
-- Examples: `N_Wavy01`, `S_Wavy02`, `E_Wavy01`, `W_Wavy02`
+- Format: `<Continent>-Wavy<NN>`
+- Examples: `EU-Wavy01`, `NA-Wavy02`, `AS-Wavy01`, `OC-Wavy02`
 
 ### Database Collections
 
 After running ConfigImporter, MongoDB will contain:
 
-1. **ConfigAgr Collection** - Aggregator configurations (4 documents)
-2. **ConfigWavy Collection** - Wavy sensor configurations (8 documents)
+1. **ConfigAgr Collection** - Aggregator configurations (7 documents)
+2. **ConfigWavy Collection** - Wavy sensor configurations (14 documents)
 3. **readings Collection** - Real-time sensor data (auto-created)
-4. **aggregated Collection** - Processed regional data (auto-created)
+4. **aggregated Collection** - Processed continental data (auto-created)
 
 ## Usage Tutorial
 
 ### Basic Operations
 
-#### 1. Starting a Complete Region
+#### 1. Starting a Complete Continent
 ```powershell
 # Using Electron Interface:
 # 1. Click "Start Server" (if not already running)
-# 2. Click "North Region" button
+# 2. Click "Europe" button (or any continent)
 # 3. Watch terminal output for successful startup
 # 4. Verify green status indicators
 
 # Manual approach:
 # Terminal 1: dotnet run (in Servidor directory)
-# Terminal 2: dotnet run N_Agr (in Agregador directory)
-# Terminal 3: dotnet run N_Wavy01 (in Wavy directory)
-# Terminal 4: dotnet run N_Wavy02 (in Wavy directory)
+# Terminal 2: dotnet run EU-Agr01 (in Agregador directory)
+# Terminal 3: dotnet run EU-Wavy01 (in Wavy directory)
+# Terminal 4: dotnet run EU-Wavy02 (in Wavy directory)
 ```
 
 #### 2. Monitoring System Health
@@ -285,22 +288,22 @@ After running ConfigImporter, MongoDB will contain:
 
 ### Advanced Configuration
 
-#### Adding New Regions
+#### Adding New Continents
 1. **Create configurations** in MongoDB:
    ```javascript
    // In MongoDB Compass or mongo shell
    db.ConfigAgr.insertOne({
-     "_id": "newRegion_Agr",
-     "Region": "NewRegion", 
+     "_id": "XX-Agr01",
+     "Continent": "NewContinent", 
      "Port": 5000,
-     "QueueName": "newregion_queue"
+     "QueueName": "newcontinent_queue"
    });
    ```
 
-2. **Update component code** to recognize new region identifiers
+2. **Update component code** to recognize new continent identifiers
 
 #### Scaling Components
-- **Multiple Aggregators**: Run `dotnet run N_Agr1`, `dotnet run N_Agr2` for load balancing
+- **Multiple Aggregators**: Run `dotnet run EU-Agr01`, `dotnet run EU-Agr02` for load balancing
 - **Additional Sensors**: Add more Wavy instances with sequential numbering
 - **Server Clustering**: Deploy multiple Servidor instances with load balancing
 
@@ -373,11 +376,11 @@ netstat -ano | findstr ":5672"
 3. **Implement data retention policies**
 4. **Use MongoDB sharding** for large datasets
 
-#### For Multiple Regions
-1. **Deploy regional MongoDB instances**
+#### For Multiple Continents
+1. **Deploy continental MongoDB instances**
 2. **Use RabbitMQ clustering**
 3. **Implement load balancers** for Servidor instances
-4. **Configure regional failover**
+4. **Configure continental failover**
 
 ## Development Environment
 
@@ -398,4 +401,4 @@ netstat -ano | findstr ":5672"
 4. **Debug issues** using IDE debugging tools
 5. **Commit changes** using Git
 
-This completes the comprehensive setup and usage guide for the Distributed Sensor Data Management System.
+This completes the comprehensive setup and usage guide for the Distributed Sensor Data Management System with continent-based architecture.

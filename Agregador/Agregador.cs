@@ -14,65 +14,104 @@ class Program
     static volatile bool encerrarExecucao = false;
 
     static string aggregatorID = "";
-    static string aggregatorRegion = "";
-    static string rpcQueueName = "";static async Task Main()
+    static string continentCode = "";
+    static string continentName = "";
+    static string serverId = "";
+    static string rpcQueueName = "";
+    static ConfigAgr? aggregatorConfig;
+
+    static async Task Main(string[] args)
     {
-        Console.Write("ID do Agregador: ");
-        aggregatorID = Console.ReadLine()?.Trim() ?? "";
-        if (string.IsNullOrEmpty(aggregatorID) || !aggregatorID.Contains('_'))
+        // Support command line argument for aggregator ID
+        if (args.Length > 0)
         {
-            Console.WriteLine("ID inválido. O ID deve estar no formato <Região>_Agr (exemplo: N_Agr).");
+            aggregatorID = args[0].Trim();
+        }
+        else
+        {
+            Console.Write("🌍 Aggregator ID (e.g., EU-Agr01, NA-Agr01): ");
+            aggregatorID = Console.ReadLine()?.Trim() ?? "";
+        }
+
+        if (string.IsNullOrEmpty(aggregatorID))
+        {
+            Console.WriteLine("❌ ID cannot be empty.");
             return;
-        }        aggregatorRegion = aggregatorID.Split('_')[0];
-        rpcQueueName = RabbitMQConfig.RPC_QUEUE_PREFIX + aggregatorRegion;
+        }
+
+        // Validate aggregator ID format (continent-based)
+        if (!IsValidAggregatorId(aggregatorID))
+        {
+            Console.WriteLine("❌ Invalid ID format. Expected format: <ContinentCode>-Agr<NN> (e.g., EU-Agr01, NA-Agr01)");
+            return;
+        }
+
+        // Extract continent code from aggregator ID
+        continentCode = aggregatorID.Split('-')[0];
+        continentName = ContinentConfig.GetContinentName(continentCode);
+
+        Console.WriteLine($"🚀 Starting {aggregatorID} for {continentName} ({continentCode})...");
 
         // Initialize configuration service
         configService = new ConfigService();
 
-        // Verifica se o agregador está configurado
-        if (!await IsAggregatorConfiguredAsync(aggregatorID))
+        // Load aggregator configuration from database
+        aggregatorConfig = await LoadAggregatorConfigAsync(aggregatorID);
+        if (aggregatorConfig == null)
         {
-            Console.WriteLine($"Agregador {aggregatorID} não está configurado no banco de dados.");
+            Console.WriteLine($"❌ Aggregator {aggregatorID} not found in database configuration.");
+            Console.WriteLine("💡 Run ConfigImporter to set up continent-based configuration.");
             return;
         }
 
-        Console.WriteLine($"[{aggregatorID}] Inicializando RabbitMQ components...");
+        serverId = aggregatorConfig.ServerId;
+        rpcQueueName = aggregatorConfig.QueueName;
+
+        Console.WriteLine($"📡 Configuration loaded:");
+        Console.WriteLine($"   • Continent: {aggregatorConfig.Continent} ({aggregatorConfig.ContinentCode})");
+        Console.WriteLine($"   • Server: {aggregatorConfig.ServerId}");
+        Console.WriteLine($"   • Port: {aggregatorConfig.Port}");
+        Console.WriteLine($"   • Queue: {aggregatorConfig.QueueName}");
+
+        Console.WriteLine($"🔧 Initializing RabbitMQ components...");
 
         try
         {
             // Initialize RabbitMQ Publisher for sending data to Server
             publisher = new RabbitMQPublisher();
-            Console.WriteLine($"[{aggregatorID}] RabbitMQ Publisher configurado com sucesso.");
+            Console.WriteLine($"✅ RabbitMQ Publisher configured successfully.");
 
             // Initialize RabbitMQ RPC Server for handling Wavy requests
             rpcServer = new RabbitMQRpcServer(rpcQueueName, HandleRpcRequest);
             rpcServer.Start();
-            Console.WriteLine($"[{aggregatorID}] RabbitMQ RPC Server iniciado na queue: {rpcQueueName}");
+            Console.WriteLine($"✅ RabbitMQ RPC Server started on queue: {rpcQueueName}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[{aggregatorID}] Erro ao configurar RabbitMQ: {ex.Message}");
+            Console.WriteLine($"❌ Error configuring RabbitMQ: {ex.Message}");
             return;
         }
 
-        Console.WriteLine($"[{aggregatorID}] Sistema iniciado com sucesso. A aguardar ligações de WAVYs...\n");
+        Console.WriteLine($"🎯 {aggregatorID} ready and waiting for Wavy connections...\n");
 
-        // Processa dados e envia ao Servidor a cada 5 segundos
+        // Process data and send to Server every 10 seconds
         var dataTask = Task.Run(async () => await ProcessAndSendData());
 
-        // Monitorar comando de desligamento
+        // Monitor shutdown command
         var shutdownTask = Task.Run(async () => await MonitorarComandoDesligar());
 
-        // Aguarda até que uma das tarefas complete
+        // Wait until one of the tasks completes
         await Task.WhenAny(dataTask, shutdownTask);
 
-        Console.WriteLine($"[{aggregatorID}] Encerrando execução...");
+        Console.WriteLine($"🔄 {aggregatorID} shutting down...");
         
         // Cleanup resources
         rpcServer?.Dispose();
         publisher?.Dispose();
-        Console.WriteLine($"[{aggregatorID}] RabbitMQ resources cleaned up.");
-    }    static Task<RpcResponse> HandleRpcRequest(RpcRequest request)
+        Console.WriteLine($"✅ {aggregatorID} RabbitMQ resources cleaned up.");
+    }
+
+    static Task<RpcResponse> HandleRpcRequest(RpcRequest request)
     {
         try
         {
@@ -104,29 +143,56 @@ class Program
                 Message = ex.Message
             });
         }
-    }
-
-    static RpcResponse HandleHandshake(RpcRequest request)
+    }    static RpcResponse HandleHandshake(RpcRequest request)
     {
         var wavyId = request.WavyId ?? "";
         
-        // Verifica se a região da Wavy corresponde à do Agregador
-        if (!wavyId.Contains('_') || wavyId.Split('_')[0] != aggregatorRegion)
+        // Check if Wavy ID follows continent-based format and matches aggregator's continent
+        if (!IsValidWavyIdForAggregator(wavyId))
         {
-            Console.WriteLine($"[{aggregatorID}] Wavy {wavyId} tem região incompatível e será rejeitada.");
+            Console.WriteLine($"❌ [{aggregatorID}] Handshake rejected: {wavyId} (wrong continent or invalid format)");
             return new RpcResponse
             {
                 Status = "ERROR",
-                Message = $"Região incompatível. Esperado: {aggregatorRegion}, Recebido: {wavyId.Split('_')[0]}"
+                Message = $"Wavy {wavyId} is not configured for continent {continentCode} or has invalid format"
             };
         }
 
-        Console.WriteLine($"[{aggregatorID}] Handshake estabelecido com {wavyId}");
+        Console.WriteLine($"🤝 [{aggregatorID}] Handshake accepted: {wavyId}");
         return new RpcResponse
         {
             Status = "OK",
-            Message = $"Conexão estabelecida com {aggregatorID}"
+            Message = $"Handshake successful with {aggregatorID}",
+            Data = JsonSerializer.Serialize(new { 
+                aggregatorId = aggregatorID, 
+                continent = continentName,
+                continentCode = continentCode,
+                serverId = serverId 
+            })
         };
+    }
+
+    static bool IsValidWavyIdForAggregator(string wavyId)
+    {
+        if (string.IsNullOrEmpty(wavyId) || !wavyId.Contains('-'))
+            return false;
+
+        var parts = wavyId.Split('-');
+        if (parts.Length != 2)
+            return false;
+
+        var wavyContinentCode = parts[0];
+        var wavyPart = parts[1];
+
+        // Check if Wavy belongs to the same continent as this aggregator
+        if (wavyContinentCode != continentCode)
+            return false;
+
+        // Validate Wavy part format (should be Wavy followed by number)
+        if (!wavyPart.StartsWith("Wavy") || wavyPart.Length < 5)
+            return false;        // Check if the number part is valid
+        var numberPart = wavyPart.Substring(4);
+        return int.TryParse(numberPart, out _);
     }
 
     static RpcResponse HandleDataRequest(RpcRequest request)
@@ -134,14 +200,12 @@ class Program
         try
         {
             var wavyId = request.WavyId ?? "";
-            var data = request.Data ?? "";
-
-            if (string.IsNullOrEmpty(data))
+            var data = request.Data ?? "";            if (string.IsNullOrEmpty(data))
             {
                 return new RpcResponse
                 {
                     Status = "ERROR",
-                    Message = "Dados não fornecidos"
+                    Message = "Data cannot be empty"
                 };
             }
 
@@ -152,22 +216,26 @@ class Program
                 return new RpcResponse
                 {
                     Status = "ERROR",
-                    Message = "Falha ao deserializar dados"
+                    Message = "Failed to deserialize sensor data"
                 };
             }
 
-            // Add aggregator ID to the message
-            wavyMessage.AgregadorId = aggregatorID;
+            // Add continent and aggregator information to the message
+            wavyMessage.Continent = continentName;
+            wavyMessage.ContinentCode = continentCode;
+            wavyMessage.AggregatorId = aggregatorID;
+            wavyMessage.ServerId = serverId;
+            wavyMessage.AgregadorId = aggregatorID; // Legacy support
 
             // Add to processing queue
             dataQueue.Enqueue(wavyMessage);
 
-            Console.WriteLine($"[{aggregatorID}] Dados recebidos de {wavyId} - {wavyMessage.Sensors.Length} sensores");
+            Console.WriteLine($"📊 [{aggregatorID}] Data received from {wavyId}: T={wavyMessage.Temperature:F1}°C, H={wavyMessage.Humidity:F1}%, CO2={wavyMessage.Co2}ppm");
             
             return new RpcResponse
             {
                 Status = "OK",
-                Message = "Dados recebidos com sucesso"
+                Message = "Data received successfully"
             };
         }
         catch (Exception ex)
@@ -273,19 +341,41 @@ class Program
 
             await Task.Delay(100);
         }
-    }    static async Task<bool> IsAggregatorConfiguredAsync(string aggregatorID)
+    }    static bool IsValidAggregatorId(string id)
+    {
+        if (string.IsNullOrEmpty(id) || !id.Contains('-'))
+            return false;
+
+        var parts = id.Split('-');
+        if (parts.Length != 2)
+            return false;
+
+        var continentCode = parts[0];
+        var agrPart = parts[1];
+
+        // Validate continent code
+        if (!ContinentConfig.IsValidContinentCode(continentCode))
+            return false;
+
+        // Validate aggregator part (should be Agr followed by number)
+        if (!agrPart.StartsWith("Agr") || agrPart.Length < 4)
+            return false;
+
+        // Check if the number part is valid
+        var numberPart = agrPart.Substring(3);
+        return int.TryParse(numberPart, out _);
+    }
+
+    static async Task<ConfigAgr?> LoadAggregatorConfigAsync(string aggregatorId)
     {
         try
         {
-            if (configService == null) return false;
-            
-            var config = await configService.GetAgrConfigAsync(aggregatorID);
-            return config != null;
+            return await configService!.GetAgrConfigAsync(aggregatorId);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao verificar configuração do agregador: {ex.Message}");
-            return false;
+            Console.WriteLine($"❌ Error loading aggregator configuration: {ex.Message}");
+                        return null;
         }
     }
 }

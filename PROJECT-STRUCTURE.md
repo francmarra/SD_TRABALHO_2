@@ -28,7 +28,7 @@ SD_TRABALHO_2/
 │   └── validate-system.ps1        # PowerShell validation script
 │
 ├── 🏗️ C# Applications
-│   ├── Agregador/                 # Regional aggregator application
+│   ├── Agregador/                 # Continental aggregator application
 │   ├── Servidor/                  # Central server application
 │   ├── Wavy/                      # Sensor simulation application
 │   ├── ConfigImporter/            # Database migration utility
@@ -44,9 +44,9 @@ SD_TRABALHO_2/
 
 ## Core Applications
 
-### 1. Agregador/ - Regional Aggregator Application
+### 1. Agregador/ - Continental Aggregator Application
 
-**Purpose**: Regional data collection and processing hubs that receive sensor data and forward it to the central server.
+**Purpose**: Continental data collection and processing hubs that receive sensor data and forward it to the central server.
 
 ```
 Agregador/
@@ -59,12 +59,12 @@ Agregador/
 
 **Key Functionality**:
 - **Data Collection**: Receives sensor readings from multiple Wavy instances via RabbitMQ
-- **Regional Processing**: Aggregates data by region (North, South, East, West)
+- **Continental Processing**: Aggregates data by continent (EU, NA, SA, AF, AS, OC, AQ)
 - **Message Forwarding**: Sends processed data to central Servidor via RabbitMQ
 - **Database Integration**: Reads configuration from MongoDB using async `ConfigService`
 - **Graceful Shutdown**: Responds to `DLG` command for clean termination
 
-**Entry Point**: `dotnet run <AggregatorId>` (e.g., `dotnet run N_Agr`)
+**Entry Point**: `dotnet run <AggregatorId>` (e.g., `dotnet run EU-Agr01`)
 
 **Dependencies**:
 - Shared library for models and services
@@ -95,7 +95,7 @@ Servidor/
 
 **Database Collections Used**:
 - `readings` - Stores incoming sensor data
-- `aggregated` - Stores processed regional summaries
+- `aggregated` - Stores processed continental summaries
 
 ### 3. Wavy/ - Sensor Simulation Application
 
@@ -112,12 +112,12 @@ Wavy/
 
 **Key Functionality**:
 - **Data Generation**: Creates realistic temperature, humidity, and CO2 readings
-- **Regional Identification**: Associates data with geographic regions (N, S, E, W)
-- **RabbitMQ Publishing**: Sends sensor readings to regional aggregators
+- **Continental Identification**: Associates data with geographic continents (EU, NA, SA, AF, AS, OC, AQ)
+- **RabbitMQ Publishing**: Sends sensor readings to continental aggregators
 - **Database Configuration**: Reads sensor parameters from MongoDB async operations
 - **Status Management**: Updates sensor status in database (Active/Inactive)
 
-**Entry Point**: `dotnet run <SensorId>` (e.g., `dotnet run N_Wavy01`)
+**Entry Point**: `dotnet run <SensorId>` (e.g., `dotnet run EU-Wavy01`)
 
 **Data Generated**:
 - Temperature: 15-30°C with realistic variations
@@ -138,7 +138,7 @@ ConfigImporter/
 ```
 
 **Key Functionality**:
-- **CSV Import**: Migrates `config_agr.csv` and `config_wavy.csv` to MongoDB collections
+- **CSV Import**: Migrates continent-based configuration files to MongoDB collections
 - **Data Validation**: Ensures configuration data integrity during import
 - **Database Testing**: Provides connectivity and CRUD operation testing
 - **One-time Setup**: Typically run once during initial system setup
@@ -153,8 +153,8 @@ dotnet run TestConfigService
 ```
 
 **Collections Created**:
-- `ConfigAgr` - 4 aggregator configurations (N_Agr, S_Agr, E_Agr, W_Agr)
-- `ConfigWavy` - 8 sensor configurations (2 per region)
+- `ConfigAgr` - 7 aggregator configurations (EU-Agr01, NA-Agr01, SA-Agr01, AF-Agr01, AS-Agr01, OC-Agr01, AQ-Agr01)
+- `ConfigWavy` - 14 sensor configurations (2 per continent)
 
 ## Shared Libraries
 
@@ -192,8 +192,8 @@ Shared/
 ```csharp
 public class ConfigAgr
 {
-    [BsonId] public string Id { get; set; }      // e.g., "N_Agr"
-    public string Region { get; set; }           // e.g., "North"
+    [BsonId] public string Id { get; set; }      // e.g., "EU-Agr01"
+    public string Continent { get; set; }        // e.g., "Europe"
     public int Port { get; set; }                // Communication port
     public string QueueName { get; set; }        // RabbitMQ queue name
 }
@@ -203,8 +203,8 @@ public class ConfigAgr
 ```csharp
 public class ConfigWavy
 {
-    [BsonId] public string Id { get; set; }      // e.g., "N_Wavy01" 
-    public string Region { get; set; }           // e.g., "North"
+    [BsonId] public string Id { get; set; }      // e.g., "EU-Wavy01" 
+    public string Continent { get; set; }        // e.g., "Europe"
     public bool IsActive { get; set; }           // Sensor status
     public int Interval { get; set; }            // Data generation interval
 }
@@ -219,7 +219,8 @@ public class WavyMessage
     public double Temperature { get; set; }      // Temperature in Celsius
     public double Humidity { get; set; }         // Humidity percentage
     public double CO2 { get; set; }              // CO2 levels in ppm
-    public string Region { get; set; }           // Geographic region
+    public string ContinentCode { get; set; }    // Geographic continent code
+    public string ContinentName { get; set; }    // Geographic continent name
 }
 ```
 
@@ -267,11 +268,14 @@ public class WavyMessage
 
 ```
 Config/
-├── config_agr.csv         # Original aggregator configurations
-└── config_wavy.csv        # Original sensor configurations
+├── config_agr.csv         # Legacy regional configurations
+├── config_wavy.csv        # Legacy regional configurations  
+├── config_agr_continents.csv     # Continental aggregator configurations
+├── config_wavy_continents.csv    # Continental sensor configurations
+└── config_server_continents.csv  # Continental server configurations
 ```
 
-**Status**: These files are imported once by ConfigImporter and then the system uses MongoDB exclusively.
+**Status**: Legacy files are retained for reference. The system now uses continent-based configurations imported by ConfigImporter into MongoDB.
 
 ### 7. Start Files/ - Component Startup Scripts
 
@@ -279,7 +283,7 @@ Config/
 
 ```
 Start Files/
-├── startAll.bat           # Starts complete system (all regions)
+├── startAll.bat           # Starts complete system (all continents)
 ├── newAgr.bat             # Starts new aggregator instance
 └── newWavy.bat            # Starts new sensor instance
 ```
@@ -290,8 +294,8 @@ Start Files/
 .\Start Files\startAll.bat
 
 # Start individual components
-.\Start Files\newAgr.bat N_Agr
-.\Start Files\newWavy.bat S_Wavy01
+.\Start Files\newAgr.bat EU-Agr01
+.\Start Files\newWavy.bat SA-Wavy01
 ```
 
 ## Electron Management Interface

@@ -9,6 +9,7 @@ namespace Shared.MongoDB
         private readonly IMongoDatabase _database;
         private readonly IMongoCollection<ConfigAgr> _configAgrCollection;
         private readonly IMongoCollection<ConfigWavy> _configWavyCollection;
+        private readonly IMongoCollection<ConfigServer> _configServerCollection;
 
         public ConfigService()
         {
@@ -16,8 +17,11 @@ namespace Shared.MongoDB
             _database = client.GetDatabase(MongoDBConfig.DATABASE_NAME);
             _configAgrCollection = _database.GetCollection<ConfigAgr>(MongoDBConfig.CONFIG_AGR_COLLECTION);
             _configWavyCollection = _database.GetCollection<ConfigWavy>(MongoDBConfig.CONFIG_WAVY_COLLECTION);
+            _configServerCollection = _database.GetCollection<ConfigServer>(MongoDBConfig.CONFIG_SERVER_COLLECTION);
         }
 
+        // ========== AGGREGATOR CONFIGURATION METHODS ==========
+        
         // Get aggregator configuration by ID
         public async Task<ConfigAgr?> GetAgrConfigAsync(string agrId)
         {
@@ -29,6 +33,30 @@ namespace Shared.MongoDB
         {
             return await _configAgrCollection.Find(_ => true).ToListAsync();
         }
+
+        // Get aggregators by continent code
+        public async Task<List<ConfigAgr>> GetAgrConfigsByContinentAsync(string continentCode)
+        {
+            return await _configAgrCollection.Find(x => x.ContinentCode == continentCode).ToListAsync();
+        }
+
+        // Insert aggregator config
+        public async Task InsertAgrConfigAsync(ConfigAgr config)
+        {
+            await _configAgrCollection.InsertOneAsync(config);
+        }
+
+        // Clear and insert all aggregator configs
+        public async Task ReplaceAllAgrConfigsAsync(List<ConfigAgr> configs)
+        {
+            await _configAgrCollection.DeleteManyAsync(_ => true);
+            if (configs.Any())
+            {
+                await _configAgrCollection.InsertManyAsync(configs);
+            }
+        }
+
+        // ========== WAVY SENSOR CONFIGURATION METHODS ==========
 
         // Get wavy configuration by ID
         public async Task<ConfigWavy?> GetWavyConfigAsync(string wavyId)
@@ -42,6 +70,18 @@ namespace Shared.MongoDB
             return await _configWavyCollection.Find(_ => true).ToListAsync();
         }
 
+        // Get wavys by continent code
+        public async Task<List<ConfigWavy>> GetWavyConfigsByContinentAsync(string continentCode)
+        {
+            return await _configWavyCollection.Find(x => x.ContinentCode == continentCode).ToListAsync();
+        }
+
+        // Get wavys by aggregator ID
+        public async Task<List<ConfigWavy>> GetWavyConfigsByAggregatorAsync(string aggregatorId)
+        {
+            return await _configWavyCollection.Find(x => x.AggregatorId == aggregatorId).ToListAsync();
+        }
+
         // Update wavy status
         public async Task UpdateWavyStatusAsync(string wavyId, int status, DateTime lastSync)
         {
@@ -53,26 +93,10 @@ namespace Shared.MongoDB
             await _configWavyCollection.UpdateOneAsync(filter, update);
         }
 
-        // Insert aggregator config
-        public async Task InsertAgrConfigAsync(ConfigAgr config)
-        {
-            await _configAgrCollection.InsertOneAsync(config);
-        }
-
         // Insert wavy config
         public async Task InsertWavyConfigAsync(ConfigWavy config)
         {
             await _configWavyCollection.InsertOneAsync(config);
-        }
-
-        // Clear and insert all aggregator configs
-        public async Task ReplaceAllAgrConfigsAsync(List<ConfigAgr> configs)
-        {
-            await _configAgrCollection.DeleteManyAsync(_ => true);
-            if (configs.Any())
-            {
-                await _configAgrCollection.InsertManyAsync(configs);
-            }
         }
 
         // Clear and insert all wavy configs
@@ -83,6 +107,62 @@ namespace Shared.MongoDB
             {
                 await _configWavyCollection.InsertManyAsync(configs);
             }
+        }
+
+        // ========== SERVER CONFIGURATION METHODS ==========
+
+        // Get server configuration by ID
+        public async Task<ConfigServer?> GetServerConfigAsync(string serverId)
+        {
+            return await _configServerCollection.Find(x => x.ServerId == serverId).FirstOrDefaultAsync();
+        }
+
+        // Get server configuration by continent code
+        public async Task<ConfigServer?> GetServerConfigByContinentAsync(string continentCode)
+        {
+            return await _configServerCollection.Find(x => x.ContinentCode == continentCode).FirstOrDefaultAsync();
+        }
+
+        // Get all server configurations
+        public async Task<List<ConfigServer>> GetAllServerConfigsAsync()
+        {
+            return await _configServerCollection.Find(_ => true).ToListAsync();
+        }
+
+        // Insert server config
+        public async Task InsertServerConfigAsync(ConfigServer config)
+        {
+            await _configServerCollection.InsertOneAsync(config);
+        }
+
+        // Clear and insert all server configs
+        public async Task ReplaceAllServerConfigsAsync(List<ConfigServer> configs)
+        {
+            await _configServerCollection.DeleteManyAsync(_ => true);
+            if (configs.Any())
+            {
+                await _configServerCollection.InsertManyAsync(configs);
+            }
+        }
+
+        // ========== CONTINENT-SPECIFIC UTILITY METHODS ==========
+
+        // Get all active continent codes
+        public async Task<List<string>> GetActiveContinentCodesAsync()
+        {
+            var servers = await _configServerCollection.Find(x => x.IsActive).ToListAsync();
+            return servers.Select(s => s.ContinentCode).Distinct().ToList();
+        }
+
+        // Get full continent configuration (server + aggregators + wavys)
+        public async Task<(ConfigServer? server, List<ConfigAgr> aggregators, List<ConfigWavy> wavys)> 
+            GetFullContinentConfigAsync(string continentCode)
+        {
+            var server = await GetServerConfigByContinentAsync(continentCode);
+            var aggregators = await GetAgrConfigsByContinentAsync(continentCode);
+            var wavys = await GetWavyConfigsByContinentAsync(continentCode);
+            
+            return (server, aggregators, wavys);
         }
     }
 }
