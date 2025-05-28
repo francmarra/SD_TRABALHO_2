@@ -3,264 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Distributed System Manager</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Courier New', monospace;
-            background-color: #000;
-            color: #00ff00;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        .header {
-            background-color: #111;
-            padding: 10px;
-            border-bottom: 1px solid #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .title {
-            font-size: 18px;
-            font-weight: bold;
-            color: #00ff00;
-        }
-
-        .system-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-        }
-
-        .status-indicator {
-            font-size: 16px;
-            color: #00ff00;
-            animation: pulse 2s infinite;
-        }
-
-        .status-indicator.warning {
-            color: #ffaa00;
-        }
-
-        .status-indicator.error {
-            color: #ff0000;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn {
-            background-color: #333;
-            color: #00ff00;
-            border: 1px solid #555;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 12px;
-            border-radius: 3px;
-            transition: background-color 0.2s;
-        }
-
-        .btn:hover {
-            background-color: #444;
-        }
-
-        .btn:disabled {
-            background-color: #222;
-            color: #666;
-            cursor: not-allowed;
-        }
-
-        .btn.stop {
-            background-color: #660000;
-            border-color: #aa0000;
-        }
-
-        .btn.stop:hover {
-            background-color: #770000;
-        }
-
-        .main-content {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        .sidebar {
-            width: 300px;
-            background-color: #111;
-            border-right: 1px solid #333;
-            padding: 15px;
-            overflow-y: auto;
-        }
-
-        .section {
-            margin-bottom: 20px;
-        }
-
-        .section-title {
-            color: #fff;
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 5px;
-        }
-
-        .component-item {
-            background-color: #222;
-            border: 1px solid #444;
-            margin-bottom: 8px;
-            padding: 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .component-item:hover {
-            background-color: #333;
-        }
-
-        .component-item.active {
-            background-color: #003300;
-            border-color: #00aa00;
-        }
-
-        .component-name {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .component-status {
-            font-size: 11px;
-            color: #888;
-        }
-
-        .component-status.running {
-            color: #00ff00;
-        }
-
-        .component-status.stopped {
-            color: #ff6666;
-        }
-
-        .input-group {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 8px;
-        }
-
-        .input-group input {
-            flex: 1;
-            background-color: #222;
-            border: 1px solid #444;
-            color: #00ff00;
-            padding: 6px;
-            font-family: inherit;
-            font-size: 11px;
-        }
-
-        .input-group input:focus {
-            outline: none;
-            border-color: #00aa00;
-        }
-
-        .terminal {
-            flex: 1;
-            background-color: #000;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .terminal-content {
-            height: 100%;
-            overflow-y: auto;
-            padding: 15px;
-            font-size: 13px;
-            line-height: 1.4;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        .terminal-input {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: #111;
-            border-top: 1px solid #333;
-            padding: 10px;
-            display: none;
-        }
-
-        .terminal-input input {
-            width: 100%;
-            background-color: #000;
-            border: none;
-            color: #00ff00;
-            font-family: inherit;
-            font-size: 13px;
-            padding: 5px;
-        }
-
-        .terminal-input input:focus {
-            outline: none;
-        }
-
-        .welcome-message {
-            color: #00aaaa;
-            text-align: center;
-            margin-top: 50px;
-            font-size: 16px;
-        }
-
-        .startup-controls {
-            margin-top: 10px;
-        }
-
-        .startup-all {
-            background-color: #004400;
-            border-color: #006600;
-            width: 100%;
-        }
-
-        .startup-all:hover {
-            background-color: #005500;
-        }
-
-        .error-text {
-            color: #ff6666;
-        }
-
-        .success-text {
-            color: #66ff66;
-        }
-
-        .info-text {
-            color: #6666ff;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
@@ -290,7 +33,7 @@
                 <div class="section">
                     <div class="section-title">Aggregators</div>
                     <div class="input-group">
-                        <input type="text" id="aggregator-id" placeholder="e.g., N_Agr" />
+                        <input type="text" id="aggregator-id" placeholder="e.g., EU-Agr01" />
                         <button class="btn" onclick="startAggregator()">Start</button>
                     </div>
                     <div id="aggregator-list"></div>
@@ -299,22 +42,33 @@
                 <div class="section">
                     <div class="section-title">Wavys</div>
                     <div class="input-group">
-                        <input type="text" id="wavy-id" placeholder="e.g., N_Wavy01" />
+                        <input type="text" id="wavy-id" placeholder="e.g., EU-Wavy01" />
                         <button class="btn" onclick="startWavy()">Start</button>
                     </div>
                     <div id="wavy-list"></div>
-                </div>                <div class="section">
-                    <div class="section-title">Quick Start</div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Quick Start - Continents</div>
                     <div class="startup-controls">
-                        <button class="btn" onclick="quickStartRegion('N')" style="width: 48%; margin-right: 4%; margin-bottom: 8px;">North Region</button>
-                        <button class="btn" onclick="quickStartRegion('S')" style="width: 48%; margin-bottom: 8px;">South Region</button>
-                        <button class="btn" onclick="quickStartRegion('E')" style="width: 48%; margin-right: 4%;">East Region</button>
-                        <button class="btn" onclick="quickStartRegion('W')" style="width: 48%;">West Region</button>
+                        <button class="btn" onclick="quickStartRegion('EU')" style="width: 30%; margin-right: 2%; margin-bottom: 8px;">Europe (EU)</button>
+                        <button class="btn" onclick="quickStartRegion('NA')" style="width: 30%; margin-right: 2%; margin-bottom: 8px;">N. America (NA)</button>
+                        <button class="btn" onclick="quickStartRegion('SA')" style="width: 30%; margin-bottom: 8px;">S. America (SA)</button>
+                        <button class="btn" onclick="quickStartRegion('AF')" style="width: 30%; margin-right: 2%;">Africa (AF)</button>
+                        <button class="btn" onclick="quickStartRegion('AS')" style="width: 30%; margin-right: 2%;">Asia (AS)</button>
+                        <button class="btn" onclick="quickStartRegion('OC')" style="width: 30%;">Oceania (OC)</button>
+                        <button class="btn" onclick="quickStartRegion('AQ')" style="width: 100%; margin-top: 8px;">Antarctica (AQ)</button>
                     </div>
                 </div>
             </div>
 
             <div class="terminal">
+                <div class="terminal-controls">
+                    <button class="btn" onclick="clearTerminal()">Clear</button>
+                    <button class="btn" onclick="toggleTailMode()">Tail Mode: <span id="tail-mode-status">ON</span></button>
+                    <button class="btn" onclick="highlightErrors()">Highlight Errors</button>
+                    <span id="message-count" class="message-counter">0 messages</span>
+                </div>
                 <div class="terminal-content" id="terminal-content">
                     <div class="welcome-message">
                         ═══════════════════════════════════════════════════════════════════════════════════<br>
@@ -324,17 +78,19 @@
                         <span class="info-text">Components:</span><br>
                         • <strong>Servidor</strong> - Central data collection server<br>
                         • <strong>Agregador</strong> - Data aggregation service<br>
-                        • <strong>Wavy</strong> - Sensor data generator<br><br>                        <span class="success-text">Instructions:</span><br>
-                        1. ✅ Server starts automatically on launch<br>
-                        2. Start one or more Aggregators (e.g., N_Agr, S_Agr)<br>
-                        3. Start Wavy components (e.g., N_Wavy01, S_Wavy01)<br><br>
+                        • <strong>Wavy</strong> - Sensor data generator<br><br>
+                        <span class="success-text">Instructions:</span><br>
+                        1. ✅ Server starts automatically on launch (e.g., EU-S, NA-S)<br>
+                        2. Start one or more Aggregators (e.g., EU-Agr01, NA-Agr01)<br>
+                        3. Start Wavy components (e.g., EU-Wavy01, NA-Wavy02)<br><br>
+                        <span class="info-text">Continents:</span> EU (Europe), NA (North America), SA (South America), AF (Africa), AS (Asia), OC (Oceania), AQ (Antarctica)<br><br>
                         <span class="info-text">Keyboard Shortcuts:</span><br>
                         • <strong>Ctrl+Shift+S</strong> - Start Server<br>
                         • <strong>Ctrl+Shift+A</strong> - Start All Components<br>
                         • <strong>Ctrl+Shift+X</strong> - Stop All Processes<br>
                         • <strong>Ctrl+`</strong> - Focus Terminal Input<br><br>
                         Click on any component to view its output in this terminal.<br>
-                        Use the "Quick Start" buttons for automatic region setup.<br><br>
+                        Use the "Quick Start" buttons for automatic continent setup.<br><br>
                         <span class="info-text">Ready to begin! 🎯</span><br>
                         ═══════════════════════════════════════════════════════════════════════════════════
                     </div>

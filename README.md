@@ -1,39 +1,42 @@
 # Distributed Sensor Data Management System
 
-A comprehensive distributed system built with C# .NET that manages sensor data collection, aggregation, and storage across multiple regions. The system uses MongoDB for data persistence, RabbitMQ for message queuing, and includes an Electron-based graphical management interface for monitoring and controlling all components.
+A comprehensive distributed system built with C# .NET that manages sensor data collection, aggregation, and storage across multiple continents. The system uses MongoDB for data persistence, RabbitMQ for message queuing, and includes an Electron-based graphical management interface for monitoring and controlling all components.
 
 ## Overview
 
-This project implements a scalable IoT sensor data management system with modern microservices architecture. The system simulates real-world environmental monitoring across four geographic regions, demonstrating distributed computing principles, message-driven architecture, and cloud-native design patterns.
+This project implements a scalable IoT sensor data management system with modern microservices architecture. The system simulates real-world environmental monitoring across seven continental regions (Europe, North America, South America, Africa, Asia, Oceania, Antarctica), demonstrating distributed computing principles, message-driven architecture, and cloud-native design patterns.
 
 ### Key Features
 - **🌊 Wavy Sensors**: Simulated IoT devices generating environmental data (temperature, humidity, CO2)
-- **🔗 Regional Aggregators**: Data collection hubs that process and forward sensor readings using RabbitMQ
-- **🗄️ Central Server**: MongoDB-based data repository with real-time ingestion and query capabilities
+- **🔗 Continental Aggregators**: Data collection hubs that process and forward sensor readings using RabbitMQ
+- **🗄️ Continental Servers**: MongoDB-based data repositories with real-time ingestion and query capabilities per continent
 - **🖥️ Management Interface**: Electron desktop application for system monitoring and control
 - **💾 Database-First Architecture**: Complete migration from file-based to MongoDB storage for enhanced scalability
 - **⚡ Async Operations**: Full asynchronous programming model for high-performance data processing
 - **🔄 Message Queuing**: RabbitMQ-based communication ensuring reliable data delivery and system decoupling
+- **🌍 Continental Architecture**: Hierarchical structure with servers, aggregators, and sensors organized by continent
 
 ## System Architecture
 
-The system implements a distributed microservices architecture with asynchronous message processing:
+The system implements a distributed microservices architecture with continent-based hierarchical organization:
 
 ```
 ┌─────────────────┐    ┌───────────────────┐    ┌─────────────────┐
-│   Wavy Sensors  │    │   Agregadores     │    │    Servidor     │
-│  (Data Sources) │───▶│  (Regional        │───▶│  (Central       │
-│                 │    │   Aggregators)    │    │   Server)       │
-│ • Temperature   │    │                   │    │                 │
-│ • Humidity      │    │ • Data Collection │    │ • MongoDB       │
-│ • CO2 Levels    │    │ • RabbitMQ        │    │ • Data Storage  │
-│ • Regional Data │    │ • Processing      │    │ • Query API     │
+│   Wavy Sensors  │    │   Agregadores     │    │ Continental     │
+│  (Data Sources) │───▶│  (Continental     │───▶│ Servers         │
+│                 │    │   Aggregators)    │    │                 │
+│ • Temperature   │    │                   │    │ • EU-S, NA-S   │
+│ • Humidity      │    │ • EU-Agr01        │    │ • MongoDB       │
+│ • CO2 Levels    │    │ • NA-Agr01        │    │ • Data Storage  │
+│ • EU-Wavy01     │    │ • RabbitMQ        │    │ • Query API     │
+│ • NA-Wavy02     │    │ • Processing      │    │ • Per Continent │
 └─────────────────┘    └───────────────────┘    └─────────────────┘
                                  ▲                       ▲
                                  │                       │
 ┌─────────────────────────────────────────────────────────────────┐
 │                     RabbitMQ Message Broker                     │
 │  • Async Communication  • Message Persistence  • Load Balance   │
+│  • Continent-specific Queues (eu_*, na_*, sa_*, etc.)          │
 └─────────────────────────────────────────────────────────────────┘
                                   ▲
                                   │
@@ -41,14 +44,25 @@ The system implements a distributed microservices architecture with asynchronous
 │                        MongoDB Database                         │
 │    • Sensor Data     • Configuration   • Aggregated Results     │
 │    • Document Store  • Indexing        • ACID Transactions      │
+│    • Continental Collections (config_server, config_agr, etc.)  │
 └─────────────────────────────────────────────────────────────────┘
                                   ▲
                                   │
 ┌─────────────────────────────────────────────────────────────────┐
 │                  Electron Management Interface                  │
-│      • Process Control    • Real-time Monitoring    • GUI       │
+│   • Process Control   • Real-time Monitoring   • Continental UI │
+│   • EU, NA, SA, AF, AS, OC, AQ Quick Start Buttons             │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+### Continental Organization
+- **EU** (Europe): EU-S, EU-Agr01, EU-Wavy01-XX
+- **NA** (North America): NA-S, NA-Agr01, NA-Wavy01-XX  
+- **SA** (South America): SA-S, SA-Agr01, SA-Wavy01-XX
+- **AF** (Africa): AF-S, AF-Agr01, AF-Wavy01-XX
+- **AS** (Asia): AS-S, AS-Agr01, AS-Wavy01-XX
+- **OC** (Oceania): OC-S, OC-Agr01, OC-Wavy01-XX
+- **AQ** (Antarctica): AQ-S, AQ-Agr01, AQ-Wavy01-XX
 
 ### Architectural Principles:
 - **Event-Driven Communication**: Components interact via RabbitMQ message queues

@@ -89,15 +89,14 @@ function setupEventListeners() {
         updateComponentStatus('server', true);
         addToOutput('server', '[MANAGER] Server auto-started on application launch.\n');
         selectComponent('server');
-        
-        // Show welcome message with auto-start info
+          // Show welcome message with auto-start info
         const terminalContent = document.getElementById('terminal-content');
         terminalContent.innerHTML = `
             <div class="welcome-message">
                 🚀 <strong>Server Auto-Started!</strong> 🚀<br><br>
                 <span class="success-text">✅ Servidor is now running automatically</span><br><br>
                 You can now start Aggregators and Wavy components.<br>
-                Use Quick Start buttons for easy region setup!<br><br>
+                Use Quick Start buttons for easy continent setup!<br><br>
                 <span style="color: #ffaa00;">Click on "server" in the sidebar to view server output.</span>
             </div>
         `;
@@ -192,10 +191,10 @@ async function startAllComponents() {
         console.log('Server already running, skipping...');
     }
     
-    // Start aggregators for all 4 regions
-    const regions = ['N', 'S', 'E', 'W'];
-    for (const region of regions) {
-        document.getElementById('aggregator-id').value = `${region}_Agr`;
+    // Start aggregators for all 7 continents
+    const continents = ['EU', 'NA', 'SA', 'AF', 'AS', 'OC', 'AQ'];
+    for (const continent of continents) {
+        document.getElementById('aggregator-id').value = `${continent}-Agr01`;
         await startAggregator();
         await new Promise(resolve => setTimeout(resolve, 1500));
     }
@@ -203,31 +202,31 @@ async function startAllComponents() {
     // Wait for aggregators to initialize
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Start wavy sensors for each region
-    for (const region of regions) {
-        document.getElementById('wavy-id').value = `${region}_Wavy01`;
+    // Start wavy sensors for each continent
+    for (const continent of continents) {
+        document.getElementById('wavy-id').value = `${continent}-Wavy01`;
         await startWavy();
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
     // Show completion message
-    addToOutput('server', '\n[MANAGER] Full system startup completed! All regions (N, S, E, W) are now active.\n');
+    addToOutput('server', '\n[MANAGER] Full system startup completed! All continents (EU, NA, SA, AF, AS, OC, AQ) are now active.\n');
 }
 
-async function quickStartRegion(region) {
-    // Start aggregator for region
-    document.getElementById('aggregator-id').value = `${region}_Agr`;
+async function quickStartRegion(continent) {
+    // Start aggregator for continent
+    document.getElementById('aggregator-id').value = `${continent}-Agr01`;
     await startAggregator();
     
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Start a couple of wavys for the region
-    document.getElementById('wavy-id').value = `${region}_Wavy01`;
+    // Start a couple of wavys for the continent
+    document.getElementById('wavy-id').value = `${continent}-Wavy01`;
     await startWavy();
     
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    document.getElementById('wavy-id').value = `${region}_Wavy02`;
+    document.getElementById('wavy-id').value = `${continent}-Wavy02`;
     await startWavy();
 }
 
@@ -291,20 +290,80 @@ function selectComponent(componentId) {
     }
 }
 
+// Terminal control features
+let tailMode = true;
+const MAX_OUTPUT_LENGTH = 5000;
+const TAIL_MODE_LINES = 100;
+
+function clearTerminal() {
+    if (currentComponent && componentOutputs.has(currentComponent)) {
+        componentOutputs.set(currentComponent, '');
+        updateTerminalContent();
+    }
+}
+
+function toggleTailMode() {
+    tailMode = !tailMode;
+    document.getElementById('tail-mode-status').textContent = tailMode ? 'ON' : 'OFF';
+    updateTerminalContent();
+}
+
+function addToOutput(componentId, text) {
+    if (!componentOutputs.has(componentId)) {
+        componentOutputs.set(componentId, '');
+    }
+    
+    let output = componentOutputs.get(componentId) + text;
+    
+    // Limit overall output size to prevent memory issues
+    if (output.length > MAX_OUTPUT_LENGTH) {
+        output = output.slice(-MAX_OUTPUT_LENGTH);
+    }
+    
+    componentOutputs.set(componentId, output);
+    
+    if (currentComponent === componentId) {
+        updateTerminalContent();
+    }
+    
+    // Update message count
+    updateMessageCount(componentId);
+}
+
+function updateMessageCount(componentId) {
+    if (currentComponent === componentId) {
+        const output = componentOutputs.get(componentId) || '';
+        const messageCount = (output.match(/Data received successfully/g) || []).length;
+        document.getElementById('message-count').textContent = `${messageCount} messages`;
+    }
+}
+
 function updateTerminalContent() {
     const terminalContent = document.getElementById('terminal-content');
     
     if (currentComponent && componentOutputs.has(currentComponent)) {
-        const output = componentOutputs.get(currentComponent);
+        let output = componentOutputs.get(currentComponent);
         const isRunning = runningProcesses.has(currentComponent);
         const status = isRunning ? 'RUNNING' : 'STOPPED';
         const statusColor = isRunning ? '#00ff00' : '#ff6666';
+        
+        // In tail mode, only show the last portion of the output
+        if (tailMode && output.length > 0) {
+            const lines = output.split('\n');
+            if (lines.length > TAIL_MODE_LINES) {
+                output = lines.slice(-TAIL_MODE_LINES).join('\n');
+                output = `[...${lines.length - TAIL_MODE_LINES} earlier messages hidden...]\n\n` + output;
+            }
+        }
         
         terminalContent.innerHTML = `
             <div style="color: #00aaaa; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px;">
                 [${currentComponent.toUpperCase()}] - <span style="color: ${statusColor}">${status}</span>
             </div>` + 
             formatOutput(output);
+            
+        // Update message count
+        updateMessageCount(currentComponent);
     } else if (currentComponent) {
         terminalContent.innerHTML = `
             <div style="color: #00aaaa; margin-bottom: 10px;">
@@ -340,14 +399,34 @@ function showNotification(processId, message) {
     }
 }
 
-function addToOutput(componentId, text) {
-    if (!componentOutputs.has(componentId)) {
-        componentOutputs.set(componentId, '');
-    }
-    componentOutputs.set(componentId, componentOutputs.get(componentId) + text);
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function updateSystemStatus() {
+    const indicator = document.getElementById('status-indicator');
+    const statusText = document.getElementById('status-text');
+    const serverRunning = runningProcesses.has('server');
+    const totalProcesses = runningProcesses.size;
     
-    if (currentComponent === componentId) {
-        updateTerminalContent();
+    if (serverRunning && totalProcesses > 1) {
+        indicator.className = 'status-indicator';
+        indicator.style.color = '#00ff00';
+        statusText.textContent = `System Active (${totalProcesses} processes)`;
+    } else if (serverRunning) {
+        indicator.className = 'status-indicator warning';
+        indicator.style.color = '#ffaa00';
+        statusText.textContent = 'Server Ready';
+    } else if (totalProcesses > 0) {
+        indicator.className = 'status-indicator warning';
+        indicator.style.color = '#ffaa00';
+        statusText.textContent = `${totalProcesses} processes (no server)`;
+    } else {
+        indicator.className = 'status-indicator error';
+        indicator.style.color = '#ff6666';
+        statusText.textContent = 'System Idle';
     }
 }
 
@@ -405,33 +484,44 @@ function updateComponentStatus(processId, isRunning) {
     }
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function updateSystemStatus() {
-    const indicator = document.getElementById('status-indicator');
-    const statusText = document.getElementById('status-text');
-    const serverRunning = runningProcesses.has('server');
-    const totalProcesses = runningProcesses.size;
-    
-    if (serverRunning && totalProcesses > 1) {
-        indicator.className = 'status-indicator';
-        indicator.style.color = '#00ff00';
-        statusText.textContent = `System Active (${totalProcesses} processes)`;
-    } else if (serverRunning) {
-        indicator.className = 'status-indicator warning';
-        indicator.style.color = '#ffaa00';
-        statusText.textContent = 'Server Ready';
-    } else if (totalProcesses > 0) {
-        indicator.className = 'status-indicator warning';
-        indicator.style.color = '#ffaa00';
-        statusText.textContent = `${totalProcesses} processes (no server)`;
-    } else {
-        indicator.className = 'status-indicator error';
-        indicator.style.color = '#ff6666';
-        statusText.textContent = 'System Idle';
+function highlightErrors() {
+    if (currentComponent && componentOutputs.has(currentComponent)) {
+        const terminalContent = document.getElementById('terminal-content');
+        const errorElements = terminalContent.querySelectorAll('span[style*="color: #ff6666"]');
+        
+        if (errorElements.length > 0) {
+            // Flash all error elements
+            errorElements.forEach(el => {
+                el.style.backgroundColor = '#440000';
+                
+                // Scroll to the first error
+                if (el === errorElements[0]) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+            
+            // Remove highlighting after a few seconds
+            setTimeout(() => {
+                errorElements.forEach(el => {
+                    el.style.backgroundColor = 'transparent';
+                });
+            }, 3000);
+        } else {
+            // If no errors found, add a temporary message
+            const message = document.createElement('div');
+            message.textContent = 'No errors found in current output';
+            message.style.color = '#66ff66';
+            message.style.textAlign = 'center';
+            message.style.padding = '10px';
+            message.style.margin = '10px 0';
+            message.style.backgroundColor = '#003300';
+            message.style.borderRadius = '5px';
+            
+            terminalContent.insertBefore(message, terminalContent.firstChild);
+            
+            setTimeout(() => {
+                message.remove();
+            }, 3000);
+        }
     }
 }
