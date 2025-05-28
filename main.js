@@ -22,6 +22,14 @@ function createWindow() {
     
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
+        
+        // Auto-start server after window is shown
+        setTimeout(() => {
+            const result = startProcess('server', 'Servidor', ['run']);
+            if (result.success && mainWindow) {
+                mainWindow.webContents.send('server-auto-started');
+            }
+        }, 1500); // Give UI time to initialize
     });
 
     mainWindow.on('closed', () => {

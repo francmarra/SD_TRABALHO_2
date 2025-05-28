@@ -39,6 +39,32 @@
             color: #00ff00;
         }
 
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .status-indicator {
+            font-size: 16px;
+            color: #00ff00;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.warning {
+            color: #ffaa00;
+        }
+
+        .status-indicator.error {
+            color: #ff0000;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
         .controls {
             display: flex;
             gap: 10px;
@@ -240,6 +266,10 @@
     <div class="container">
         <div class="header">
             <div class="title">🖥️ Distributed System Manager</div>
+            <div class="system-status" id="system-status">
+                <span class="status-indicator" id="status-indicator">●</span>
+                <span id="status-text">System Ready</span>
+            </div>
             <div class="controls">
                 <button class="btn startup-all" onclick="startAllComponents()">Start All</button>
                 <button class="btn stop" onclick="stopAllProcesses()">Stop All</button>
@@ -273,13 +303,13 @@
                         <button class="btn" onclick="startWavy()">Start</button>
                     </div>
                     <div id="wavy-list"></div>
-                </div>
-
-                <div class="section">
+                </div>                <div class="section">
                     <div class="section-title">Quick Start</div>
                     <div class="startup-controls">
-                        <button class="btn" onclick="quickStartRegion('N')" style="width: 48%; margin-right: 4%;">North Region</button>
-                        <button class="btn" onclick="quickStartRegion('S')" style="width: 48%;">South Region</button>
+                        <button class="btn" onclick="quickStartRegion('N')" style="width: 48%; margin-right: 4%; margin-bottom: 8px;">North Region</button>
+                        <button class="btn" onclick="quickStartRegion('S')" style="width: 48%; margin-bottom: 8px;">South Region</button>
+                        <button class="btn" onclick="quickStartRegion('E')" style="width: 48%; margin-right: 4%;">East Region</button>
+                        <button class="btn" onclick="quickStartRegion('W')" style="width: 48%;">West Region</button>
                     </div>
                 </div>
             </div>
@@ -295,7 +325,7 @@
                         • <strong>Servidor</strong> - Central data collection server<br>
                         • <strong>Agregador</strong> - Data aggregation service<br>
                         • <strong>Wavy</strong> - Sensor data generator<br><br>                        <span class="success-text">Instructions:</span><br>
-                        1. Start the Server first<br>
+                        1. ✅ Server starts automatically on launch<br>
                         2. Start one or more Aggregators (e.g., N_Agr, S_Agr)<br>
                         3. Start Wavy components (e.g., N_Wavy01, S_Wavy01)<br><br>
                         <span class="info-text">Keyboard Shortcuts:</span><br>
