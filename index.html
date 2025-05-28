@@ -288,28 +288,31 @@
                 </div>
 
                 <div class="section">
-                    <div class="section-title">Aggregators</div>
-                    <div class="input-group">
-                        <input type="text" id="aggregator-id" placeholder="e.g., N_Agr" />
+                    <div class="section-title">Aggregators</div>                    <div class="input-group">
+                        <input type="text" id="aggregator-id" placeholder="e.g., EU-Agr01" />
                         <button class="btn" onclick="startAggregator()">Start</button>
                     </div>
                     <div id="aggregator-list"></div>
                 </div>
 
                 <div class="section">
-                    <div class="section-title">Wavys</div>
-                    <div class="input-group">
-                        <input type="text" id="wavy-id" placeholder="e.g., N_Wavy01" />
+                    <div class="section-title">Wavys</div>                    <div class="input-group">
+                        <input type="text" id="wavy-id" placeholder="e.g., EU-Wavy01" />
                         <button class="btn" onclick="startWavy()">Start</button>
                     </div>
                     <div id="wavy-list"></div>
-                </div>                <div class="section">
-                    <div class="section-title">Quick Start</div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Quick Start - Continents</div>
                     <div class="startup-controls">
-                        <button class="btn" onclick="quickStartRegion('N')" style="width: 48%; margin-right: 4%; margin-bottom: 8px;">North Region</button>
-                        <button class="btn" onclick="quickStartRegion('S')" style="width: 48%; margin-bottom: 8px;">South Region</button>
-                        <button class="btn" onclick="quickStartRegion('E')" style="width: 48%; margin-right: 4%;">East Region</button>
-                        <button class="btn" onclick="quickStartRegion('W')" style="width: 48%;">West Region</button>
+                        <button class="btn" onclick="quickStartRegion('EU')" style="width: 30%; margin-right: 2%; margin-bottom: 8px;">Europe (EU)</button>
+                        <button class="btn" onclick="quickStartRegion('NA')" style="width: 30%; margin-right: 2%; margin-bottom: 8px;">N. America (NA)</button>
+                        <button class="btn" onclick="quickStartRegion('SA')" style="width: 30%; margin-bottom: 8px;">S. America (SA)</button>
+                        <button class="btn" onclick="quickStartRegion('AF')" style="width: 30%; margin-right: 2%;">Africa (AF)</button>
+                        <button class="btn" onclick="quickStartRegion('AS')" style="width: 30%; margin-right: 2%;">Asia (AS)</button>
+                        <button class="btn" onclick="quickStartRegion('OC')" style="width: 30%;">Oceania (OC)</button>
+                        <button class="btn" onclick="quickStartRegion('AQ')" style="width: 100%; margin-top: 8px;">Antarctica (AQ)</button>
                     </div>
                 </div>
             </div>
@@ -325,16 +328,17 @@
                         • <strong>Servidor</strong> - Central data collection server<br>
                         • <strong>Agregador</strong> - Data aggregation service<br>
                         • <strong>Wavy</strong> - Sensor data generator<br><br>                        <span class="success-text">Instructions:</span><br>
-                        1. ✅ Server starts automatically on launch<br>
-                        2. Start one or more Aggregators (e.g., N_Agr, S_Agr)<br>
-                        3. Start Wavy components (e.g., N_Wavy01, S_Wavy01)<br><br>
+                        1. ✅ Server starts automatically on launch (e.g., EU-S, NA-S)<br>
+                        2. Start one or more Aggregators (e.g., EU-Agr01, NA-Agr01)<br>
+                        3. Start Wavy components (e.g., EU-Wavy01, NA-Wavy02)<br><br>
+                        <span class="info-text">Continents:</span> EU (Europe), NA (North America), SA (South America), AF (Africa), AS (Asia), OC (Oceania), AQ (Antarctica)<br><br>
                         <span class="info-text">Keyboard Shortcuts:</span><br>
                         • <strong>Ctrl+Shift+S</strong> - Start Server<br>
                         • <strong>Ctrl+Shift+A</strong> - Start All Components<br>
                         • <strong>Ctrl+Shift+X</strong> - Stop All Processes<br>
                         • <strong>Ctrl+`</strong> - Focus Terminal Input<br><br>
                         Click on any component to view its output in this terminal.<br>
-                        Use the "Quick Start" buttons for automatic region setup.<br><br>
+                        Use the "Quick Start" buttons for automatic continent setup.<br><br>
                         <span class="info-text">Ready to begin! 🎯</span><br>
                         ═══════════════════════════════════════════════════════════════════════════════════
                     </div>

@@ -89,15 +89,14 @@ function setupEventListeners() {
         updateComponentStatus('server', true);
         addToOutput('server', '[MANAGER] Server auto-started on application launch.\n');
         selectComponent('server');
-        
-        // Show welcome message with auto-start info
+          // Show welcome message with auto-start info
         const terminalContent = document.getElementById('terminal-content');
         terminalContent.innerHTML = `
             <div class="welcome-message">
                 🚀 <strong>Server Auto-Started!</strong> 🚀<br><br>
                 <span class="success-text">✅ Servidor is now running automatically</span><br><br>
                 You can now start Aggregators and Wavy components.<br>
-                Use Quick Start buttons for easy region setup!<br><br>
+                Use Quick Start buttons for easy continent setup!<br><br>
                 <span style="color: #ffaa00;">Click on "server" in the sidebar to view server output.</span>
             </div>
         `;
@@ -192,10 +191,10 @@ async function startAllComponents() {
         console.log('Server already running, skipping...');
     }
     
-    // Start aggregators for all 4 regions
-    const regions = ['N', 'S', 'E', 'W'];
-    for (const region of regions) {
-        document.getElementById('aggregator-id').value = `${region}_Agr`;
+    // Start aggregators for all 7 continents
+    const continents = ['EU', 'NA', 'SA', 'AF', 'AS', 'OC', 'AQ'];
+    for (const continent of continents) {
+        document.getElementById('aggregator-id').value = `${continent}-Agr01`;
         await startAggregator();
         await new Promise(resolve => setTimeout(resolve, 1500));
     }
@@ -203,31 +202,31 @@ async function startAllComponents() {
     // Wait for aggregators to initialize
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Start wavy sensors for each region
-    for (const region of regions) {
-        document.getElementById('wavy-id').value = `${region}_Wavy01`;
+    // Start wavy sensors for each continent
+    for (const continent of continents) {
+        document.getElementById('wavy-id').value = `${continent}-Wavy01`;
         await startWavy();
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
     // Show completion message
-    addToOutput('server', '\n[MANAGER] Full system startup completed! All regions (N, S, E, W) are now active.\n');
+    addToOutput('server', '\n[MANAGER] Full system startup completed! All continents (EU, NA, SA, AF, AS, OC, AQ) are now active.\n');
 }
 
-async function quickStartRegion(region) {
-    // Start aggregator for region
-    document.getElementById('aggregator-id').value = `${region}_Agr`;
+async function quickStartRegion(continent) {
+    // Start aggregator for continent
+    document.getElementById('aggregator-id').value = `${continent}-Agr01`;
     await startAggregator();
     
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Start a couple of wavys for the region
-    document.getElementById('wavy-id').value = `${region}_Wavy01`;
+    // Start a couple of wavys for the continent
+    document.getElementById('wavy-id').value = `${continent}-Wavy01`;
     await startWavy();
     
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    document.getElementById('wavy-id').value = `${region}_Wavy02`;
+    document.getElementById('wavy-id').value = `${continent}-Wavy02`;
     await startWavy();
 }
 

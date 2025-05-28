@@ -11,36 +11,79 @@ class Program
 {
     static RabbitMQSubscriber? subscriber;
     static MongoDBService? mongoService;
+    static ConfigService? configService;
+    static string serverId = "";
+    static string continentCode = "";
+    static string continentName = "";
     static volatile bool encerrarExecucao = false;    static async Task Main()
     {
-        // Initialize MongoDB
-        Console.WriteLine("[SERVIDOR] Inicializando MongoDB...");
+        // Initialize configuration service
+        configService = new ConfigService();
+
+        // Get server ID from user
+        while (true)
+        {
+            Console.Write("ID do Servidor: ");
+            serverId = Console.ReadLine()?.Trim() ?? "";
+            if (string.IsNullOrEmpty(serverId) || !serverId.Contains('-') || !ContinentConfig.IsValidServerId(serverId))
+            {
+                Console.WriteLine("ID inválido. O ID deve estar no formato <Continente>-S (ex: EU-S, NA-S).");
+                Console.WriteLine("Continentes suportados: EU, NA, SA, AF, AS, OC, AQ");
+                continue;
+            }
+
+            // Verify server is configured
+            if (!await IsServerConfiguredAsync(serverId))
+            {
+                Console.WriteLine($"Servidor {serverId} não está configurado! Insira um ID válido.");
+                continue;
+            }
+
+            break;
+        }
+
+        // Load server configuration and continent information
+        var serverConfig = await configService.GetServerConfigAsync(serverId);
+        if (serverConfig != null)
+        {
+            continentCode = serverConfig.ContinentCode;
+            continentName = serverConfig.Continent;
+            Console.WriteLine($"[{serverId}] Configuração carregada: {continentName} ({continentCode})");
+        }
+        else
+        {
+            Console.WriteLine($"Erro: Não foi possível carregar a configuração para {serverId}");
+            return;
+        }        // Initialize MongoDB
+        Console.WriteLine($"[{serverId}] Inicializando MongoDB...");
         try
         {
             mongoService = new MongoDBService();
             var connectionTest = await mongoService.TestConnectionAsync();
             if (!connectionTest)
             {
-                Console.WriteLine("[SERVIDOR] Falha na conexão com MongoDB. Continuando apenas com arquivos locais.");
+                Console.WriteLine($"[{serverId}] Falha na conexão com MongoDB. Continuando apenas com arquivos locais.");
                 mongoService = null;
             }
             else
             {
-                Console.WriteLine("[SERVIDOR] MongoDB conectado com sucesso!");
-                await mongoService.LogSystemEventAsync("SERVIDOR", "STARTUP", "Servidor iniciado com sucesso");
+                Console.WriteLine($"[{serverId}] MongoDB conectado com sucesso!");
+                await mongoService.LogSystemEventAsync(serverId, "STARTUP", $"Servidor {serverId} iniciado com sucesso");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[SERVIDOR] Erro ao conectar com MongoDB: {ex.Message}. Continuando apenas com arquivos locais.");
+            Console.WriteLine($"[{serverId}] Erro ao conectar com MongoDB: {ex.Message}. Continuando apenas com arquivos locais.");
             mongoService = null;
         }
         
-        Console.WriteLine("[SERVIDOR] Inicializando RabbitMQ Subscriber...");
+        // Setup continent-specific server queue
+        string serverQueue = ContinentConfig.GetQueueName(continentCode, "server");
+        Console.WriteLine($"[{serverId}] Inicializando RabbitMQ Subscriber...");
 
         try
         {
-            subscriber = new RabbitMQSubscriber("server_queue");
+            subscriber = new RabbitMQSubscriber(serverQueue);
             
             // Subscribe to data messages
             subscriber.SubscribeToData(OnDataReceived);
@@ -48,12 +91,12 @@ class Program
             // Subscribe to shutdown messages
             subscriber.SubscribeToShutdown(OnShutdownReceived);
             
-            Console.WriteLine("[SERVIDOR] RabbitMQ configurado com sucesso.");
-            Console.WriteLine("[SERVIDOR] A ouvir mensagens de dados e shutdown via RabbitMQ...\n");
-        }
+            Console.WriteLine($"[{serverId}] RabbitMQ configurado com sucesso.");
+            Console.WriteLine($"[{serverId}] Queue: {serverQueue}");
+            Console.WriteLine($"[{serverId}] A ouvir mensagens de dados e shutdown via RabbitMQ...\n");        }
         catch (Exception ex)
         {
-            Console.WriteLine($"[SERVIDOR] Erro ao configurar RabbitMQ: {ex.Message}");
+            Console.WriteLine($"[{serverId}] Erro ao configurar RabbitMQ: {ex.Message}");
             return;
         }
 
@@ -64,29 +107,29 @@ class Program
         while (!encerrarExecucao)
         {
             await Task.Delay(200);
-        }        Console.WriteLine("[SERVIDOR] Encerrando execução...");
+        }        Console.WriteLine($"[{serverId}] Encerrando execução...");
         
         // Log shutdown event
         if (mongoService != null)
         {
             try
             {
-                await mongoService.LogSystemEventAsync("SERVIDOR", "SHUTDOWN", "Servidor encerrando");
+                await mongoService.LogSystemEventAsync(serverId, "SHUTDOWN", $"Servidor {serverId} encerrando");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SERVIDOR] Erro ao logar shutdown no MongoDB: {ex.Message}");
+                Console.WriteLine($"[{serverId}] Erro ao logar shutdown no MongoDB: {ex.Message}");
             }
         }
         
         subscriber?.Dispose();
-        Console.WriteLine("[SERVIDOR] RabbitMQ resources cleaned up.");
+        Console.WriteLine($"[{serverId}] RabbitMQ resources cleaned up.");
     }    static async void OnDataReceived(string message)
     {
         try
         {
             var aggregatedData = JsonSerializer.Deserialize<AggregatedData>(message);
-            if (aggregatedData == null) return;            Console.WriteLine($"[SERVIDOR] Dados recebidos de [{aggregatedData.AgregadorId}] - {aggregatedData.Messages.Count} mensagens");
+            if (aggregatedData == null) return;            Console.WriteLine($"[{serverId}] Dados recebidos de [{aggregatedData.AgregadorId}] - {aggregatedData.Messages.Count} mensagens");
 
             // Save to MongoDB if available
             if (mongoService != null)
@@ -101,21 +144,20 @@ class Program
                         await mongoService.InsertWavyMessageAsync(wavyMessage);
                     }
                     
-                    Console.WriteLine($"[SERVIDOR] Dados salvos no MongoDB com sucesso");
+                    Console.WriteLine($"[{serverId}] Dados salvos no MongoDB com sucesso");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[SERVIDOR] Erro ao salvar no MongoDB: {ex.Message}");
+                    Console.WriteLine($"[{serverId}] Erro ao salvar no MongoDB: {ex.Message}");
                 }
             }
             else
             {
-                Console.WriteLine($"[SERVIDOR] MongoDB não disponível - dados não foram salvos");
-            }
-        }
+                Console.WriteLine($"[{serverId}] MongoDB não disponível - dados não foram salvos");
+            }        }
         catch (Exception ex)
         {
-            Console.WriteLine($"[SERVIDOR] Erro ao processar dados recebidos: {ex.Message}");
+            Console.WriteLine($"[{serverId}] Erro ao processar dados recebidos: {ex.Message}");
         }
     }
 
@@ -127,11 +169,11 @@ class Program
             var aggregatorId = jsonDoc.RootElement.GetProperty("AggregatorId").GetString();
             var timestamp = jsonDoc.RootElement.GetProperty("Timestamp").GetString();
             
-            Console.WriteLine($"[SERVIDOR] Notificação de shutdown recebida de {aggregatorId} em {timestamp}");
+            Console.WriteLine($"[{serverId}] Notificação de shutdown recebida de {aggregatorId} em {timestamp}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[SERVIDOR] Erro ao processar shutdown: {ex.Message}");
+            Console.WriteLine($"[{serverId}] Erro ao processar shutdown: {ex.Message}");
         }
     }
 
@@ -142,10 +184,27 @@ class Program
             var comando = Console.ReadLine();
             if (comando != null && comando.Trim().Equals("DLG", StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine("[SERVIDOR] Comando de desligamento recebido...");
+                Console.WriteLine($"[{serverId}] Comando de desligamento recebido...");
                 encerrarExecucao = true;
                 break;
             }
+        }
+    }
+
+    // Verifica se o servidor é configurado
+    static async Task<bool> IsServerConfiguredAsync(string serverId)
+    {
+        try
+        {
+            if (configService == null) return false;
+            
+            var config = await configService.GetServerConfigAsync(serverId);
+            return config != null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao verificar configuração do servidor: {ex.Message}");
+            return false;
         }
     }
 }

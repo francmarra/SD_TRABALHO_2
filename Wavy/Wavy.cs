@@ -11,28 +11,44 @@ using Shared.MongoDB;
 class Program
 {
     static RabbitMQRpcClient? rpcClient;
-    static ConfigService? configService;
-    static string wavyID = "";
-    static string wavyRegion = "";
+    static ConfigService? configService;    static string wavyID = "";
+    static string continentCode = "";
+    static string continentName = "";
+    static string aggregatorId = "";
+    static string serverId = "";
     static string rpcQueueName = "";
-    static volatile bool encerrarExecucao = false;    static async Task Main()
+    static volatile bool encerrarExecucao = false;    static async Task Main(string[] args)
     {
         // Initialize configuration service
         configService = new ConfigService();
 
+        // Check if Wavy ID was provided as command line argument
+        if (args.Length > 0)
+        {
+            wavyID = args[0].Trim();
+        }
+
         // Loop até que um ID válido seja fornecido
         while (true)
         {
-            Console.Write("ID da Wavy: ");
-            wavyID = Console.ReadLine()?.Trim() ?? "";
-            if (string.IsNullOrEmpty(wavyID) || !wavyID.Contains('_'))
+            // If no command line argument provided, ask for input
+            if (string.IsNullOrEmpty(wavyID))
             {
-                Console.WriteLine("ID inválido. O ID deve estar no formato <Região>_WavyXX (ex: N_Wavy01).");
+                Console.Write("ID da Wavy: ");
+                wavyID = Console.ReadLine()?.Trim() ?? "";
+            }
+
+            if (string.IsNullOrEmpty(wavyID) || !wavyID.Contains('-') || !ContinentConfig.IsValidWavyId(wavyID))
+            {
+                Console.WriteLine("ID inválido. O ID deve estar no formato <Continente>-WavyXX (ex: EU-Wavy01, NA-Wavy02).");
+                Console.WriteLine("Continentes suportados: EU, NA, SA, AF, AS, OC, AQ");
+                wavyID = ""; // Reset to ask again
                 continue;
             }
             if (!await IsWavyConfiguredAsync(wavyID))
             {
                 Console.WriteLine($"Wavy {wavyID} não está configurada! Insira um ID válido.");
+                wavyID = ""; // Reset to ask again
                 continue;
             }
 
@@ -53,16 +69,33 @@ class Program
                 else
                 {
                     // Volta a pedir o ID
+                    wavyID = ""; // Reset to ask again
                     continue;
                 }
             }
-
             break;
         }
 
-        // Determina a região da wavy
-        wavyRegion = wavyID.Split('_')[0];
-        rpcQueueName = RabbitMQConfig.RPC_QUEUE_PREFIX + wavyRegion;
+        // Load wavy configuration and continent information
+        var wavyConfig = await configService.GetWavyConfigAsync(wavyID);
+        if (wavyConfig != null)
+        {
+            continentCode = wavyConfig.ContinentCode;
+            continentName = wavyConfig.Continent;
+            aggregatorId = wavyConfig.AggregatorId;
+            serverId = wavyConfig.ServerId;
+            Console.WriteLine($"[{wavyID}] Configuração carregada: {continentName} ({continentCode})");
+        }
+        else
+        {
+            Console.WriteLine($"Erro: Não foi possível carregar a configuração para {wavyID}");
+            return;
+        }
+
+        // Determina o continente da wavy
+        string[] parts = wavyID.Split('-');
+        string localContinentCode = parts[0];
+        rpcQueueName = RabbitMQConfig.RPC_QUEUE_PREFIX + localContinentCode;
 
         Console.WriteLine($"[{wavyID}] Inicializando RabbitMQ RPC Client...");
 
@@ -140,8 +173,7 @@ class Program
         int segundos = 0;
 
         while (!encerrarExecucao && rpcClient != null)
-        {
-            try
+        {            try
             {
                 double temperatura = Math.Round(15 + rnd.NextDouble() * 10, 2);
                 
@@ -152,11 +184,13 @@ class Program
                     wavyMessage = new WavyMessage
                     {
                         WavyId = wavyID,
-                        Sensors = new[]
-                        {
-                            new SensorData { Type = "temperature", Value = temperatura },
-                            new SensorData { Type = "humidity", Value = umidade }
-                        },
+                        Continent = continentName,
+                        ContinentCode = continentCode,
+                        AggregatorId = aggregatorId,
+                        ServerId = serverId,
+                        Temperature = temperatura,
+                        Humidity = umidade,
+                        Co2 = 0, // No CO2 sensor for now
                         Timestamp = DateTime.Now.ToString("o")
                     };
                 }
@@ -165,10 +199,13 @@ class Program
                     wavyMessage = new WavyMessage
                     {
                         WavyId = wavyID,
-                        Sensors = new[]
-                        {
-                            new SensorData { Type = "temperature", Value = temperatura }
-                        },
+                        Continent = continentName,
+                        ContinentCode = continentCode,
+                        AggregatorId = aggregatorId,
+                        ServerId = serverId,
+                        Temperature = temperatura,
+                        Humidity = 0, // No humidity reading on odd seconds
+                        Co2 = 0, // No CO2 sensor for now
                         Timestamp = DateTime.Now.ToString("o")
                     };
                 }

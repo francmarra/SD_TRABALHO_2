@@ -3,14 +3,14 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace Shared.Models
 {
-    public class ConfigAgr
+    public class ConfigServer
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string? Id { get; set; }
 
-        [BsonElement("id")]
-        public string AgrId { get; set; } = string.Empty;
+        [BsonElement("server_id")]
+        public string ServerId { get; set; } = string.Empty;
 
         [BsonElement("continent")]
         public string Continent { get; set; } = string.Empty;
@@ -18,16 +18,22 @@ namespace Shared.Models
         [BsonElement("continent_code")]
         public string ContinentCode { get; set; } = string.Empty;
 
-        [BsonElement("server_id")]
-        public string ServerId { get; set; } = string.Empty;
-
         [BsonElement("port")]
         public int Port { get; set; }
 
         [BsonElement("queue_name")]
         public string QueueName { get; set; } = string.Empty;
 
+        [BsonElement("database_name")]
+        public string DatabaseName { get; set; } = string.Empty;
+
         [BsonElement("is_active")]
         public bool IsActive { get; set; } = true;
+
+        [BsonElement("max_connections")]
+        public int MaxConnections { get; set; } = 100;
+
+        [BsonElement("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }
