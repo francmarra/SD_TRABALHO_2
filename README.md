@@ -1,127 +1,263 @@
-# Distributed System Manager
+# Distributed Sensor Data Management System
 
-An Electron-based graphical interface for managing your distributed system components (Servidor, Agregador, and Wavy).
+A comprehensive distributed system built with C# .NET that manages sensor data collection, aggregation, and storage across multiple regions. The system uses MongoDB for data persistence, RabbitMQ for message queuing, and includes an Electron-based graphical management interface for monitoring and controlling all components.
 
-## Features
+## Overview
 
-🖥️ **Modern Terminal-like Interface** - Black terminal aesthetic with green text  
-⚡ **Process Management** - Start, stop, and monitor all system components  
-📊 **Real-time Output** - View live output from each component  
-🚀 **Quick Start Options** - Predefined setups for North/South regions  
-⌨️ **Keyboard Shortcuts** - Efficient management with hotkeys  
-🎯 **Interactive Terminal** - Send commands directly to running processes  
+This project implements a scalable IoT sensor data management system with modern microservices architecture. The system simulates real-world environmental monitoring across four geographic regions, demonstrating distributed computing principles, message-driven architecture, and cloud-native design patterns.
 
-## Quick Start
-
-1. **Install Dependencies** (if not already done):
-   ```bash
-   npm install
-   ```
-
-2. **Start the Manager**:
-   ```bash
-   npm start
-   ```
-   Or double-click `start-manager.bat`
-
-3. **Basic Usage**:
-   - Click "Start Server" to initialize the central server
-   - Add Aggregators using IDs like `N_Agr`, `S_Agr`
-   - Add Wavy sensors using IDs like `N_Wavy01`, `S_Wavy01`
-   - Click on any component to view its terminal output
-   - Use terminal input to send commands to selected processes
+### Key Features
+- **🌊 Wavy Sensors**: Simulated IoT devices generating environmental data (temperature, humidity, CO2)
+- **🔗 Regional Aggregators**: Data collection hubs that process and forward sensor readings using RabbitMQ
+- **🗄️ Central Server**: MongoDB-based data repository with real-time ingestion and query capabilities
+- **🖥️ Management Interface**: Electron desktop application for system monitoring and control
+- **💾 Database-First Architecture**: Complete migration from file-based to MongoDB storage for enhanced scalability
+- **⚡ Async Operations**: Full asynchronous programming model for high-performance data processing
+- **🔄 Message Queuing**: RabbitMQ-based communication ensuring reliable data delivery and system decoupling
 
 ## System Architecture
 
+The system implements a distributed microservices architecture with asynchronous message processing:
+
 ```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│    Wavy     │───▶│  Agregador  │───▶│   Servidor  │
-│ (Sensors)   │    │(Aggregator) │    │  (Server)   │
-└─────────────┘    └─────────────┘    └─────────────┘
+┌─────────────────┐    ┌───────────────────┐    ┌─────────────────┐
+│   Wavy Sensors  │    │   Agregadores     │    │    Servidor     │
+│  (Data Sources) │───▶│  (Regional        │───▶│  (Central       │
+│                 │    │   Aggregators)    │    │   Server)       │
+│ • Temperature   │    │                   │    │                 │
+│ • Humidity      │    │ • Data Collection │    │ • MongoDB       │
+│ • CO2 Levels    │    │ • RabbitMQ        │    │ • Data Storage  │
+│ • Regional Data │    │ • Processing      │    │ • Query API     │
+└─────────────────┘    └───────────────────┘    └─────────────────┘
+                                 ▲                       ▲
+                                 │                       │
+┌─────────────────────────────────────────────────────────────────┐
+│                     RabbitMQ Message Broker                     │
+│  • Async Communication  • Message Persistence  • Load Balance   │
+└─────────────────────────────────────────────────────────────────┘
+                                  ▲
+                                  │
+┌─────────────────────────────────────────────────────────────────┐
+│                        MongoDB Database                         │
+│    • Sensor Data     • Configuration   • Aggregated Results     │
+│    • Document Store  • Indexing        • ACID Transactions      │
+└─────────────────────────────────────────────────────────────────┘
+                                  ▲
+                                  │
+┌─────────────────────────────────────────────────────────────────┐
+│                  Electron Management Interface                  │
+│      • Process Control    • Real-time Monitoring    • GUI       │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-- **Wavy**: Generates sensor data (temperature, humidity)
-- **Agregador**: Collects and aggregates data from multiple Wavys
-- **Servidor**: Central server that stores all aggregated data
+### Architectural Principles:
+- **Event-Driven Communication**: Components interact via RabbitMQ message queues
+- **Database-Centric Design**: MongoDB provides centralized, scalable data storage and configuration management
+- **Microservices Pattern**: Each component is independently deployable and horizontally scalable
+- **Async-First**: All I/O operations use asynchronous programming patterns
+- **Fault-Tolerant**: Components handle failures gracefully with automatic recovery mechanisms
+- **Configuration-Driven**: System behavior controlled through MongoDB-stored configuration data
 
-## Component IDs
+## Project Documentation
 
-### Aggregators
-- Format: `<Region>_Agr`
-- Examples: `N_Agr`, `S_Agr`, `E_Agr`, `W_Agr`
+- **📖 [README.md](./README.md)** - This file: project overview and architecture
+- **🚀 [SETUP.md](./SETUP.md)** - Detailed installation, configuration, and usage tutorial  
+- **🏗️ [PROJECT-STRUCTURE.md](./PROJECT-STRUCTURE.md)** - Complete explanation of directories and file purposes
 
-### Wavy Sensors
-- Format: `<Region>_Wavy<Number>`
-- Examples: `N_Wavy01`, `S_Wavy02`, `E_Wavy03`
+## System Components
 
-## Keyboard Shortcuts
+The system consists of four main components working together:
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Shift+S` | Start Server |
-| `Ctrl+Shift+A` | Start All Components |
-| `Ctrl+Shift+X` | Stop All Processes |
-| `Ctrl+\`` | Focus Terminal Input |
+### 🌊 Wavy Sensors
+Simulated IoT devices that generate environmental data (temperature, humidity, CO2) and send it to regional aggregators via RabbitMQ.
 
-## Quick Start Scenarios
+### 🔗 Agregadores  
+Regional data collection hubs that receive sensor data, perform aggregation, and forward processed data to the central server.
 
-### Single Region Setup
-1. Start Server
-2. Click "North Region" or "South Region" quick start
-3. This will automatically start:
-   - One Aggregator for the region
-   - Two Wavy sensors for the region
+### 🗄️ Servidor
+Central data repository that stores all sensor data in MongoDB and provides real-time processing capabilities.
 
-### Full System Setup
-1. Click "Start All" - starts Server + N_Agr + S_Agr + N_Wavy01 + S_Wavy01
-2. Add more Wavy sensors as needed
+### 🖥️ Electron Management Interface
+Desktop application that provides comprehensive monitoring and control of all system components with one-click deployment options.
 
-### Manual Setup
-1. Start Server
-2. Add Aggregators manually: `N_Agr`, `S_Agr`
-3. Add Wavy sensors: `N_Wavy01`, `N_Wavy02`, `S_Wavy01`, etc.
+## Database Architecture
 
-## Process Management
+### MongoDB Collections
 
-- **Green status** = Running
-- **Red status** = Stopped
-- Click on any component to view its output
-- Use the terminal input to send commands (like `DLG` to stop Wavy/Agregador)
-- Stop buttons send graceful shutdown commands first, then force-kill if needed
+**ConfigAgr Collection** - Aggregator configurations (4 documents)
+```javascript
+{
+  "_id": "N_Agr",
+  "Region": "North", 
+  "Port": 5000,
+  "QueueName": "north_aggregator_queue"
+}
+```
+
+**ConfigWavy Collection** - Sensor configurations (8 documents)
+```javascript
+{
+  "_id": "N_Wavy01",
+  "Region": "North",
+  "IsActive": true,
+  "Interval": 5000
+}
+```
+
+**readings Collection** - Real-time sensor data
+```javascript
+{
+  "_id": ObjectId("..."),
+  "sensorId": "N_Wavy01",
+  "region": "North",
+  "timestamp": "2025-05-28T10:30:00Z",
+  "temperature": 23.5,
+  "humidity": 65.2,
+  "co2": 410,
+  "aggregatorId": "N_Agr",
+  "receivedAt": "2025-05-28T10:30:01Z"
+}
+```
+
+**aggregated Collection** - Processed regional summaries
+```javascript
+{
+  "_id": ObjectId("..."),
+  "region": "North",
+  "timeWindow": "2025-05-28T10:30:00Z",
+  "avgTemperature": 23.2,
+  "avgHumidity": 64.8,
+  "avgCO2": 405,
+  "sensorCount": 2,
+  "processedAt": "2025-05-28T10:31:00Z"
+}
+```
+
+### Migration from File-Based to Database
+The system has been completely migrated from CSV file configuration and JSON file logging to MongoDB-based storage:
+
+**✅ Completed Migrations**:
+- Configuration management: CSV files → MongoDB ConfigAgr/ConfigWavy collections
+- Data storage: Individual `registos_*.json` files → MongoDB readings collection
+- Async operations: Synchronous file I/O → Asynchronous database operations
+- Service injection: Direct file access → ConfigService dependency injection
+
+## Communication Infrastructure
+
+### RabbitMQ Message Flow
+```
+Wavy Sensors ── sensor_data ──▶ Regional Queues ──▶ Agregadores
+                                                         │
+                                                         ▼
+Servidor ◀── aggregated_data ─── Aggregator Queues ◀─────┘
+    │
+    ▼
+MongoDB Storage
+```
+
+**Queue Configuration**:
+- **sensor_data exchange**: Direct exchange for raw sensor readings
+- **aggregated_data exchange**: Direct exchange for processed regional data
+- **Regional queues**: `north_sensors`, `south_sensors`, `east_sensors`, `west_sensors`
+- **Server queue**: `central_server_data`
+
+**Message Patterns**:
+- **Publish/Subscribe**: Wavy sensors publish to regional queues
+- **Point-to-Point**: Aggregators send processed data to central server
+- **Load Balancing**: Multiple aggregators can process the same regional queue
+
+## Regional Architecture
+
+### **Multi-Region Support**
+The system supports four geographic regions:
+- **North (N)**: `N_Agr`, `N_Wavy01`, `N_Wavy02`, etc.
+- **South (S)**: `S_Agr`, `S_Wavy01`, `S_Wavy02`, etc.
+- **East (E)**: `E_Agr`, `E_Wavy01`, `E_Wavy02`, etc.
+- **West (W)**: `W_Agr`, `W_Wavy01`, `W_Wavy02`, etc.
+
+### **Scaling and Load Distribution**
+- Each region can have multiple Aggregators for load balancing
+- Wavy sensors can be dynamically added/removed
+- Horizontal scaling through additional server instances
+- Data partitioning by region and time
+
+## Electron Management Interface
+
+Cross-platform desktop application providing comprehensive monitoring and control of all system components with real-time process management and one-click deployment options.
+
+For detailed interface features and usage instructions, see **[SETUP.md](./SETUP.md)** and **[PROJECT-STRUCTURE.md](./PROJECT-STRUCTURE.md)**.
+
+## Quick Start
+
+For complete installation and setup instructions, see **[SETUP.md](./SETUP.md)**.
+
+## Component Configuration
+
+For detailed component configuration, deployment scenarios, and keyboard shortcuts, see **[SETUP.md](./SETUP.md)**.
+
+## Monitoring and Management
+
+For detailed monitoring features, process management, and troubleshooting, see **[SETUP.md](./SETUP.md)**.
+
+## Development and Extension
+
+For detailed project structure and development guidelines, see **[PROJECT-STRUCTURE.md](./PROJECT-STRUCTURE.md)**.
+
+## Project Documentation
+
+- **📖 [README.md](./README.md)** - This file: comprehensive project overview and architecture
+- **🚀 [SETUP.md](./SETUP.md)** - Detailed installation, configuration, and usage tutorial
+- **🏗️ [PROJECT-STRUCTURE.md](./PROJECT-STRUCTURE.md)** - Complete explanation of directories and file purposes
+
+## Technical Highlights
+
+### Modern C# Development Practices
+- **.NET 9.0**: Latest framework with performance improvements
+- **Async/Await**: Full asynchronous programming model throughout
+- **Dependency Injection**: Clean architecture with service injection
+- **Nullable Reference Types**: Enhanced code safety and null checking
+
+### Database-First Architecture
+- **MongoDB Integration**: Complete migration from file-based to document storage
+- **Async Database Operations**: All I/O operations use asynchronous patterns
+- **Configuration Management**: Runtime configuration stored and managed in database
+- **Data Models**: Strongly-typed models with MongoDB annotations
+
+### Message-Driven Design
+- **RabbitMQ**: Reliable message queuing for component communication
+- **Decoupled Architecture**: Components communicate through message contracts
+- **Scalability**: Horizontal scaling through queue-based load distribution
+- **Fault Tolerance**: Message persistence and retry mechanisms
+
+### Desktop Management Interface
+- **Electron Framework**: Cross-platform desktop application
+- **Real-time Monitoring**: Live process output streaming and status updates
+- **Interactive Control**: Direct command sending to running processes
+- **Modern UI**: Terminal-style interface with responsive design
+
+## Regional Deployment
+
+The system supports four geographic regions with complete component sets:
+
+| Region | Aggregator | Sensors | Configuration |
+|--------|------------|---------|---------------|
+| **North** | `N_Agr` | `N_Wavy01`, `N_Wavy02` | MongoDB ConfigAgr/ConfigWavy |
+| **South** | `S_Agr` | `S_Wavy01`, `S_Wavy02` | MongoDB ConfigAgr/ConfigWavy |
+| **East** | `E_Agr` | `E_Wavy01`, `E_Wavy02` | MongoDB ConfigAgr/ConfigWavy |
+| **West** | `W_Agr` | `W_Wavy01`, `W_Wavy02` | MongoDB ConfigAgr/ConfigWavy |
+
+### Scaling Options
+- **Horizontal Sensor Scaling**: Add more Wavy instances per region (`N_Wavy03`, `N_Wavy04`, etc.)
+- **Aggregator Load Balancing**: Deploy multiple aggregators per region (`N_Agr1`, `N_Agr2`)
+- **Multi-Server Deployment**: Run multiple Servidor instances with load balancing
+- **Geographic Distribution**: Deploy regions across different physical locations
 
 ## Troubleshooting
 
-### Process Won't Start
-- Ensure .NET is installed (`dotnet --version`)
-- Check that all projects are built (`dotnet build` in each folder)
-- Verify RabbitMQ is running if using message queues
+For troubleshooting guides, performance optimization, and debugging information, see **[SETUP.md](./SETUP.md)**.
 
-### Terminal Not Responsive
-- Use `Ctrl+\`` to focus the terminal input
-- Make sure you've selected a running component first
+## Contributing and Development
 
-### Process Won't Stop
-- Try using the terminal input to send `DLG` command
-- Use "Stop All" to force terminate all processes
-- Manager will automatically force-kill after 5 seconds
+For development workflow, architecture principles, and performance considerations, see **[PROJECT-STRUCTURE.md](./PROJECT-STRUCTURE.md)** and **[SETUP.md](./SETUP.md)**.
 
-## Development
-
-The manager consists of:
-- `main.js` - Electron main process (Node.js backend)
-- `renderer.js` - Frontend JavaScript 
-- `index.html` - User interface
-- `package.json` - Dependencies and scripts
-
-To modify or extend the manager, edit these files and restart with `npm start`.
-
-## File Structure
-
-```
-├── main.js              # Electron main process
-├── renderer.js          # Frontend logic
-├── index.html           # User interface
-├── package.json         # Dependencies
-├── start-manager.bat    # Windows startup script
-└── [C# Projects]        # Your distributed system components
-```
+This distributed sensor data management system demonstrates modern software architecture principles while providing a robust foundation for IoT data processing and monitoring applications.

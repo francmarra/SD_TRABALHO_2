@@ -47,9 +47,7 @@ function setupEventListeners() {
             e.preventDefault();
             stopAllProcesses();
         }
-    });
-
-    // IPC listeners
+    });    // IPC listeners
     ipcRenderer.on('process-output', (event, processId, output) => {
         if (!componentOutputs.has(processId)) {
             componentOutputs.set(processId, '');
@@ -83,6 +81,26 @@ function setupEventListeners() {
         
         // Show notification
         showNotification(processId, 'Process stopped');
+    });
+
+    // Handle auto-started server
+    ipcRenderer.on('server-auto-started', () => {
+        runningProcesses.add('server');
+        updateComponentStatus('server', true);
+        addToOutput('server', '[MANAGER] Server auto-started on application launch.\n');
+        selectComponent('server');
+        
+        // Show welcome message with auto-start info
+        const terminalContent = document.getElementById('terminal-content');
+        terminalContent.innerHTML = `
+            <div class="welcome-message">
+                🚀 <strong>Server Auto-Started!</strong> 🚀<br><br>
+                <span class="success-text">✅ Servidor is now running automatically</span><br><br>
+                You can now start Aggregators and Wavy components.<br>
+                Use Quick Start buttons for easy region setup!<br><br>
+                <span style="color: #ffaa00;">Click on "server" in the sidebar to view server output.</span>
+            </div>
+        `;
     });
 }
 
@@ -165,32 +183,35 @@ async function stopAllProcesses() {
 }
 
 async function startAllComponents() {
-    // Start server first
-    await startServer();
+    // Start server if not already running
+    if (!runningProcesses.has('server')) {
+        await startServer();
+        // Wait for server to initialize
+        await new Promise(resolve => setTimeout(resolve, 3000));
+    } else {
+        console.log('Server already running, skipping...');
+    }
     
-    // Wait a bit for server to initialize
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Start default aggregators
-    document.getElementById('aggregator-id').value = 'N_Agr';
-    await startAggregator();
-    
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    document.getElementById('aggregator-id').value = 'S_Agr';
-    await startAggregator();
+    // Start aggregators for all 4 regions
+    const regions = ['N', 'S', 'E', 'W'];
+    for (const region of regions) {
+        document.getElementById('aggregator-id').value = `${region}_Agr`;
+        await startAggregator();
+        await new Promise(resolve => setTimeout(resolve, 1500));
+    }
     
     // Wait for aggregators to initialize
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Start some wavys
-    document.getElementById('wavy-id').value = 'N_Wavy01';
-    await startWavy();
+    // Start wavy sensors for each region
+    for (const region of regions) {
+        document.getElementById('wavy-id').value = `${region}_Wavy01`;
+        await startWavy();
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
     
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    document.getElementById('wavy-id').value = 'S_Wavy01';
-    await startWavy();
+    // Show completion message
+    addToOutput('server', '\n[MANAGER] Full system startup completed! All regions (N, S, E, W) are now active.\n');
 }
 
 async function quickStartRegion(region) {
@@ -371,6 +392,9 @@ async function updateProcessList() {
         serverBtn.onclick = startServer;
         serverBtn.classList.remove('stop');
     }
+    
+    // Update system status
+    updateSystemStatus();
 }
 
 function updateComponentStatus(processId, isRunning) {
@@ -385,4 +409,29 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function updateSystemStatus() {
+    const indicator = document.getElementById('status-indicator');
+    const statusText = document.getElementById('status-text');
+    const serverRunning = runningProcesses.has('server');
+    const totalProcesses = runningProcesses.size;
+    
+    if (serverRunning && totalProcesses > 1) {
+        indicator.className = 'status-indicator';
+        indicator.style.color = '#00ff00';
+        statusText.textContent = `System Active (${totalProcesses} processes)`;
+    } else if (serverRunning) {
+        indicator.className = 'status-indicator warning';
+        indicator.style.color = '#ffaa00';
+        statusText.textContent = 'Server Ready';
+    } else if (totalProcesses > 0) {
+        indicator.className = 'status-indicator warning';
+        indicator.style.color = '#ffaa00';
+        statusText.textContent = `${totalProcesses} processes (no server)`;
+    } else {
+        indicator.className = 'status-indicator error';
+        indicator.style.color = '#ff6666';
+        statusText.textContent = 'System Idle';
+    }
 }

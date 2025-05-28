@@ -9,14 +9,10 @@ using Shared.MongoDB;
 
 class Program
 {
-    static readonly string basePath = Path.Combine(
-        Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)!.Parent!.Parent!.Parent!.FullName, "registos");    static readonly Dictionary<string, Mutex> fileMutexes = new();
     static RabbitMQSubscriber? subscriber;
     static MongoDBService? mongoService;
     static volatile bool encerrarExecucao = false;    static async Task Main()
     {
-        Directory.CreateDirectory(basePath);
-        
         // Initialize MongoDB
         Console.WriteLine("[SERVIDOR] Inicializando MongoDB...");
         try
@@ -90,9 +86,7 @@ class Program
         try
         {
             var aggregatedData = JsonSerializer.Deserialize<AggregatedData>(message);
-            if (aggregatedData == null) return;
-
-            Console.WriteLine($"[SERVIDOR] Dados recebidos de [{aggregatedData.AgregadorId}] - {aggregatedData.Messages.Count} mensagens");
+            if (aggregatedData == null) return;            Console.WriteLine($"[SERVIDOR] Dados recebidos de [{aggregatedData.AgregadorId}] - {aggregatedData.Messages.Count} mensagens");
 
             // Save to MongoDB if available
             if (mongoService != null)
@@ -106,36 +100,17 @@ class Program
                     {
                         await mongoService.InsertWavyMessageAsync(wavyMessage);
                     }
+                    
+                    Console.WriteLine($"[SERVIDOR] Dados salvos no MongoDB com sucesso");
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[SERVIDOR] Erro ao salvar no MongoDB: {ex.Message}");
                 }
             }
-
-            // Continue saving to local files (backup)
-            foreach (var wavyMessage in aggregatedData.Messages)
+            else
             {
-                try
-                {
-                    var id = wavyMessage.WavyId;
-                    var filePath = Path.Combine(basePath, $"registos_{id}.json");
-
-                    lock (fileMutexes)
-                    {
-                        if (!fileMutexes.ContainsKey(id))
-                            fileMutexes[id] = new Mutex();
-                    }
-
-                    fileMutexes[id].WaitOne();
-                    var jsonString = JsonSerializer.Serialize(wavyMessage);
-                    File.AppendAllText(filePath, jsonString + Environment.NewLine);
-                    fileMutexes[id].ReleaseMutex();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[SERVIDOR] Erro ao guardar dados de {wavyMessage.WavyId}: {ex.Message}");
-                }
+                Console.WriteLine($"[SERVIDOR] MongoDB não disponível - dados não foram salvos");
             }
         }
         catch (Exception ex)
