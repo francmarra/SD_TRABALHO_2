@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 
@@ -6,6 +6,9 @@ let mainWindow;
 let processes = new Map();
 
 function createWindow() {
+    // Remove default menu bar
+    Menu.setApplicationMenu(null);
+    
     mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
@@ -15,7 +18,8 @@ function createWindow() {
         },
         show: false,
         backgroundColor: '#000000',
-        titleBarStyle: 'default'
+        titleBarStyle: 'default',
+        autoHideMenuBar: true
     });
 
     mainWindow.loadFile('index.html');
