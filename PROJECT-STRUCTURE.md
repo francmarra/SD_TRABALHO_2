@@ -164,26 +164,26 @@ dotnet run TestConfigService
 
 ```
 Shared/
-├── Shared.csproj          # Shared library project configuration
-├── Models/                # Data models and DTOs
-│   ├── ConfigAgr.cs       # Aggregator configuration model
-│   ├── ConfigWavy.cs      # Wavy sensor configuration model
-│   ├── WavyMessage.cs     # Sensor data message structure
-│   ├── AggregatedData.cs  # Aggregated data structure
-│   ├── RpcRequest.cs      # RPC request model
-│   └── RpcResponse.cs     # RPC response model
-├── MongoDB/               # Database services and configuration
-│   ├── MongoDBConfig.cs   # Database connection settings
-│   ├── MongoDBService.cs  # Core database operations
-│   └── ConfigService.cs   # Configuration management service
-├── RabbitMQ/              # Message queue services
-│   ├── RabbitMQConfig.cs  # RabbitMQ connection settings
+├── Shared.csproj               # Shared library project configuration
+├── Models/                     # Data models and DTOs
+│   ├── ConfigAgr.cs            # Aggregator configuration model
+│   ├── ConfigWavy.cs           # Wavy sensor configuration model
+│   ├── WavyMessage.cs          # Sensor data message structure
+│   ├── AggregatedData.cs       # Aggregated data structure
+│   ├── RpcRequest.cs           # RPC request model
+│   └── RpcResponse.cs          # RPC response model
+├── MongoDB/                    # Database services and configuration
+│   ├── MongoDBConfig.cs        # Database connection settings
+│   ├── MongoDBService.cs       # Core database operations
+│   └── ConfigService.cs        # Configuration management service
+├── RabbitMQ/                   # Message queue services
+│   ├── RabbitMQConfig.cs       # RabbitMQ connection settings
 │   ├── RabbitMQPublisher.cs    # Message publishing service
 │   ├── RabbitMQSubscriber.cs   # Message consumption service
 │   ├── RabbitMQRpcClient.cs    # RPC client implementation
 │   └── RabbitMQRpcServer.cs    # RPC server implementation
-├── bin/Debug/net9.0/      # Compiled shared library
-└── obj/                   # Build cache
+├── bin/Debug/net9.0/           # Compiled shared library
+└── obj/                        # Build cache
 ```
 
 #### Models/ - Data Models
@@ -268,11 +268,11 @@ public class WavyMessage
 
 ```
 Config/
-├── config_agr.csv         # Legacy regional configurations
-├── config_wavy.csv        # Legacy regional configurations  
-├── config_agr_continents.csv     # Continental aggregator configurations
-├── config_wavy_continents.csv    # Continental sensor configurations
-└── config_server_continents.csv  # Continental server configurations
+├── config_agr.csv                  # Legacy regional configurations
+├── config_wavy.csv                 # Legacy regional configurations  
+├── config_agr_continents.csv       # Continental aggregator configurations
+├── config_wavy_continents.csv      # Continental sensor configurations
+└── config_server_continents.csv    # Continental server configurations
 ```
 
 **Status**: Legacy files are retained for reference. The system now uses continent-based configurations imported by ConfigImporter into MongoDB.
@@ -363,22 +363,23 @@ Start Files/
 
 ### Message Flow Diagram
 ```
-┌─────────────┐    RabbitMQ     ┌─────────────┐    RabbitMQ     ┌─────────────┐
-│ Wavy Sensors│ ──────────────▶ │ Agregadores │ ──────────────▶ │  Servidor   │
-│             │  sensor_data    │             │ aggregated_data │             │
-│ N_Wavy01    │     queue       │   N_Agr     │     queue       │  MongoDB    │
-│ N_Wavy02    │                 │             │                 │  Storage    │
-└─────────────┘                 └─────────────┘                 └─────────────┘
+┌──────────────┐    RabbitMQ     ┌─────────────┐    RabbitMQ     ┌─────────────┐
+│ Wavy Sensors │ ──────────────▶ │ Agregadores │ ──────────────▶ │ Servidor    │
+│              │  sensor_data    │             │ aggregated_data │             │
+│  N_Wavy01    │     queue       │  N_Agr      │     queue       │  MongoDB    │
+│  N_Wavy02    │                 │             │                 │  Storage    │
+└──────────────┘                 └─────────────┘                 └─────────────┘
        ▲                               ▲                               ▲
        │                               │                               │
        │ MongoDB Config                │ MongoDB Config                │
+       │                               │                               │
        ▼                               ▼                               ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           MongoDB Database                                 │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐      │
-│  │ ConfigWavy   │ │ ConfigAgr    │ │   readings   │ │  aggregated  │      │
-│  │ Collection   │ │ Collection   │ │  Collection  │ │  Collection  │      │
-│  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘      │
+│                              MongoDB Database                               │
+│     ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐     │
+│     │ ConfigWavy   │ │ ConfigAgr    │ │   readings   │ │  aggregated  │     │
+│     │ Collection   │ │ Collection   │ │  Collection  │ │  Collection  │     │
+│     └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘     │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 

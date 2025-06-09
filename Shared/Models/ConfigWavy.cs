@@ -31,9 +31,16 @@ namespace Shared.Models
         public DateTime LastSync { get; set; }
 
         [BsonElement("data_interval")]
-        public int DataInterval { get; set; } = 5000; // Default 5 seconds
-
-        [BsonElement("is_active")]
+        public int DataInterval { get; set; } = 5000; // Default 5 seconds        [BsonElement("is_active")]
         public bool IsActive { get; set; } = true;
+
+        [BsonElement("latitude")]
+        public double Latitude { get; set; }
+
+        [BsonElement("longitude")]
+        public double Longitude { get; set; }
+
+        [BsonElement("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

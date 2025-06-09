@@ -28,10 +28,14 @@ namespace Shared.Models
         public string DatabaseName { get; set; } = string.Empty;
 
         [BsonElement("is_active")]
-        public bool IsActive { get; set; } = true;
-
-        [BsonElement("max_connections")]
+        public bool IsActive { get; set; } = true;        [BsonElement("max_connections")]
         public int MaxConnections { get; set; } = 100;
+
+        [BsonElement("latitude")]
+        public double Latitude { get; set; }
+
+        [BsonElement("longitude")]
+        public double Longitude { get; set; }
 
         [BsonElement("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

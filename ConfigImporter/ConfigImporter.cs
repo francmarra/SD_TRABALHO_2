@@ -5,13 +5,17 @@ using Shared.MongoDB;
 namespace ConfigImporter
 {
     class Program
-    {
-        static async Task Main(string[] args)
+    {        static async Task Main(string[] args)
         {
             // Check if user wants to test database connectivity
             if (args.Length > 0 && args[0] == "--test")
             {
                 await TestConfigService.TestDatabaseConnectivity();
+                return;
+            }            // Check if user wants to test coordinate configuration
+            if (args.Length > 0 && args[0] == "--test-coords")
+            {
+                CoordinateConfigTest.TestCoordinateConfiguration();
                 return;
             }
 
@@ -184,12 +188,11 @@ namespace ConfigImporter
             }
 
             var lines = await File.ReadAllLinesAsync(filePath);
-            
-            // Skip header row
+              // Skip header row
             for (int i = 1; i < lines.Length; i++)
             {
                 var parts = lines[i].Split(',');
-                if (parts.Length >= 7)
+                if (parts.Length >= 10)
                 {
                     configs.Add(new ConfigServer
                     {
@@ -200,7 +203,9 @@ namespace ConfigImporter
                         QueueName = parts[4].Trim(),
                         DatabaseName = parts[5].Trim(),
                         IsActive = bool.Parse(parts[6].Trim()),
-                        MaxConnections = parts.Length > 7 ? int.Parse(parts[7].Trim()) : 100,
+                        MaxConnections = int.Parse(parts[7].Trim()),
+                        Latitude = double.Parse(parts[8].Trim(), CultureInfo.InvariantCulture),
+                        Longitude = double.Parse(parts[9].Trim(), CultureInfo.InvariantCulture),
                         CreatedAt = DateTime.UtcNow
                     });
                 }
@@ -224,12 +229,11 @@ namespace ConfigImporter
             }
 
             var lines = await File.ReadAllLinesAsync(filePath);
-            
-            // Skip header row
+              // Skip header row
             for (int i = 1; i < lines.Length; i++)
             {
                 var parts = lines[i].Split(',');
-                if (parts.Length >= 7)
+                if (parts.Length >= 9)
                 {
                     configs.Add(new ConfigAgr
                     {
@@ -239,7 +243,10 @@ namespace ConfigImporter
                         ServerId = parts[3].Trim(),
                         Port = int.Parse(parts[4].Trim()),
                         QueueName = parts[5].Trim(),
-                        IsActive = bool.Parse(parts[6].Trim())
+                        IsActive = bool.Parse(parts[6].Trim()),
+                        Latitude = double.Parse(parts[7].Trim(), CultureInfo.InvariantCulture),
+                        Longitude = double.Parse(parts[8].Trim(), CultureInfo.InvariantCulture),
+                        CreatedAt = DateTime.UtcNow
                     });
                 }
             }
@@ -265,9 +272,8 @@ namespace ConfigImporter
             
             // Skip header row
             for (int i = 1; i < lines.Length; i++)
-            {
-                var parts = lines[i].Split(',');
-                if (parts.Length >= 9)
+            {                var parts = lines[i].Split(',');
+                if (parts.Length >= 11)
                 {
                     configs.Add(new ConfigWavy
                     {
@@ -279,7 +285,10 @@ namespace ConfigImporter
                         Status = int.Parse(parts[5].Trim()),
                         LastSync = DateTime.Parse(parts[6].Trim(), null, DateTimeStyles.RoundtripKind),
                         DataInterval = int.Parse(parts[7].Trim()),
-                        IsActive = bool.Parse(parts[8].Trim())
+                        IsActive = bool.Parse(parts[8].Trim()),
+                        Latitude = double.Parse(parts[9].Trim(), CultureInfo.InvariantCulture),
+                        Longitude = double.Parse(parts[10].Trim(), CultureInfo.InvariantCulture),
+                        CreatedAt = DateTime.UtcNow
                     });
                 }
             }

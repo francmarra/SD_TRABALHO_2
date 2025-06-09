@@ -22,12 +22,19 @@ namespace Shared.Models
         public string ServerId { get; set; } = string.Empty;
 
         [BsonElement("port")]
-        public int Port { get; set; }
-
-        [BsonElement("queue_name")]
+        public int Port { get; set; }        [BsonElement("queue_name")]
         public string QueueName { get; set; } = string.Empty;
 
         [BsonElement("is_active")]
         public bool IsActive { get; set; } = true;
+
+        [BsonElement("latitude")]
+        public double Latitude { get; set; }
+
+        [BsonElement("longitude")]
+        public double Longitude { get; set; }
+
+        [BsonElement("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }
