@@ -410,7 +410,7 @@ function updateSystemStatus() {
     const statusText = document.getElementById('status-text');
     const serverRunning = runningProcesses.has('server');
     const totalProcesses = runningProcesses.size;
-    
+
     if (serverRunning && totalProcesses > 1) {
         indicator.className = 'status-indicator';
         indicator.style.color = '#00ff00';
@@ -523,5 +523,178 @@ function highlightErrors() {
                 message.remove();
             }, 3000);
         }
+    }
+}
+
+// Accordion functionality
+function toggleAccordion(contentId) {
+    const content = document.getElementById(contentId);
+    const arrow = document.getElementById(contentId.replace('-content', '-arrow'));
+    
+    if (content.classList.contains('collapsed')) {
+        content.classList.remove('collapsed');
+        arrow.classList.remove('rotated');
+        arrow.textContent = '▼';
+    } else {
+        content.classList.add('collapsed');
+        arrow.classList.add('rotated');
+        arrow.textContent = '▶';
+    }
+}
+
+// Map tab functionality
+let map = null;
+let mapInitialized = false;
+
+function openMapTab() {
+    const tabContainer = document.getElementById('map-tab-container');
+    tabContainer.style.display = 'block';
+    
+    // Initialize map if not already done
+    if (!mapInitialized) {
+        setTimeout(() => {
+            initializeMap();
+            mapInitialized = true;
+        }, 100);
+    } else {
+        // Invalidate size to fix display issues
+        setTimeout(() => {
+            if (map) {
+                map.invalidateSize();
+            }
+        }, 100);
+    }
+    
+    appendOutput('system', '🗺️ System map opened in new tab');
+}
+
+function closeMapTab() {
+    const tabContainer = document.getElementById('map-tab-container');
+    tabContainer.style.display = 'none';
+    
+    appendOutput('system', '🗺️ Map tab closed');
+}
+
+function initializeMap() {
+    // Initialize the map
+    map = L.map('map').setView([20, 0], 2); // Center on world view
+    
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Add system markers
+    addSystemMarkers();
+    
+    appendOutput('system', '🗺️ Interactive map initialized with system components');
+}
+
+function addSystemMarkers() {
+    // Example locations for each continent
+    const locations = [
+        // Europe
+        { lat: 52.5200, lng: 13.4050, name: 'EU-Server', type: 'Server', continent: 'EU', city: 'Berlin' },
+        { lat: 48.8566, lng: 2.3522, name: 'EU-Agr01', type: 'Aggregator', continent: 'EU', city: 'Paris' },
+        { lat: 51.5074, lng: -0.1278, name: 'EU-Wavy01', type: 'Wavy', continent: 'EU', city: 'London' },
+        { lat: 55.7558, lng: 37.6176, name: 'EU-Wavy02', type: 'Wavy', continent: 'EU', city: 'Moscow' },
+        
+        // North America
+        { lat: 40.7128, lng: -74.0060, name: 'NA-Server', type: 'Server', continent: 'NA', city: 'New York' },
+        { lat: 34.0522, lng: -118.2437, name: 'NA-Agr01', type: 'Aggregator', continent: 'NA', city: 'Los Angeles' },
+        { lat: 41.8781, lng: -87.6298, name: 'NA-Wavy01', type: 'Wavy', continent: 'NA', city: 'Chicago' },
+        { lat: 43.6532, lng: -79.3832, name: 'NA-Wavy02', type: 'Wavy', continent: 'NA', city: 'Toronto' },
+        
+        // South America
+        { lat: -23.5505, lng: -46.6333, name: 'SA-Server', type: 'Server', continent: 'SA', city: 'São Paulo' },
+        { lat: -34.6037, lng: -58.3816, name: 'SA-Agr01', type: 'Aggregator', continent: 'SA', city: 'Buenos Aires' },
+        { lat: -22.9068, lng: -43.1729, name: 'SA-Wavy01', type: 'Wavy', continent: 'SA', city: 'Rio de Janeiro' },
+        
+        // Africa
+        { lat: -26.2041, lng: 28.0473, name: 'AF-Server', type: 'Server', continent: 'AF', city: 'Johannesburg' },
+        { lat: 30.0444, lng: 31.2357, name: 'AF-Agr01', type: 'Aggregator', continent: 'AF', city: 'Cairo' },
+        { lat: -1.2921, lng: 36.8219, name: 'AF-Wavy01', type: 'Wavy', continent: 'AF', city: 'Nairobi' },
+        
+        // Asia
+        { lat: 35.6762, lng: 139.6503, name: 'AS-Server', type: 'Server', continent: 'AS', city: 'Tokyo' },
+        { lat: 39.9042, lng: 116.4074, name: 'AS-Agr01', type: 'Aggregator', continent: 'AS', city: 'Beijing' },
+        { lat: 28.6139, lng: 77.2090, name: 'AS-Wavy01', type: 'Wavy', continent: 'AS', city: 'New Delhi' },
+        { lat: 1.3521, lng: 103.8198, name: 'AS-Wavy02', type: 'Wavy', continent: 'AS', city: 'Singapore' },
+        
+        // Oceania
+        { lat: -33.8688, lng: 151.2093, name: 'OC-Server', type: 'Server', continent: 'OC', city: 'Sydney' },
+        { lat: -37.8136, lng: 144.9631, name: 'OC-Agr01', type: 'Aggregator', continent: 'OC', city: 'Melbourne' },
+        { lat: -27.4698, lng: 153.0251, name: 'OC-Wavy01', type: 'Wavy', continent: 'OC', city: 'Brisbane' },
+        
+        // Antarctica
+        { lat: -77.8463, lng: 166.6667, name: 'AQ-Server', type: 'Server', continent: 'AQ', city: 'McMurdo Station' },
+        { lat: -70.6693, lng: 2.5333, name: 'AQ-Wavy01', type: 'Wavy', continent: 'AQ', city: 'Research Base' }
+    ];
+    
+    locations.forEach(location => {
+        let iconColor = '#00ff00'; // Default green
+        let iconSymbol = '●';
+        
+        // Set different colors and symbols based on component type
+        switch(location.type) {
+            case 'Server':
+                iconColor = '#ff6600';
+                iconSymbol = '🖥️';
+                break;
+            case 'Aggregator':
+                iconColor = '#6666ff';
+                iconSymbol = '📊';
+                break;
+            case 'Wavy':
+                iconColor = '#00ff00';
+                iconSymbol = '📡';
+                break;
+        }
+        
+        // Create marker
+        const marker = L.marker([location.lat, location.lng]).addTo(map);
+        
+        // Check if component is currently running
+        const processId = location.type === 'Server' ? 'server' : 
+                         location.type === 'Aggregator' ? `aggregator-${location.name}` : 
+                         `wavy-${location.name}`;
+        
+        const isRunning = runningProcesses.has(processId);
+        const statusColor = isRunning ? '#00ff00' : '#ff6666';
+        const status = isRunning ? 'Running' : 'Stopped';
+        
+        // Create popup content
+        const popupContent = `
+            <div style="color: ${iconColor}; font-family: 'Courier New', monospace; min-width: 200px;">
+                <strong>${iconSymbol} ${location.name}</strong><br>
+                <strong>Type:</strong> ${location.type}<br>
+                <strong>Location:</strong> ${location.city}<br>
+                <strong>Continent:</strong> ${location.continent}<br>
+                <strong>Status:</strong> <span style="color: ${statusColor};">${status}</span><br>
+                <strong>Coordinates:</strong> ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}
+            </div>
+        `;
+        
+        marker.bindPopup(popupContent);
+        
+        // Add click event to select component in main interface
+        marker.on('click', () => {
+            appendOutput('system', `📍 Clicked on ${location.name} (${location.type}) in ${location.city}`);
+            
+            // If component is running, switch to it in main interface
+            if (isRunning) {
+                selectComponent(processId);
+            }
+        });
+        
+        // Change marker opacity based on running status
+        marker.setOpacity(isRunning ? 1.0 : 0.6);
+    });
+}
+
+// Helper function to append output (using existing addToOutput if available)
+function appendOutput(componentId, message) {
+    if (typeof addToOutput === 'function') {
+        addToOutput(componentId, `[${new Date().toLocaleTimeString()}] ${message}\n`);
     }
 }
