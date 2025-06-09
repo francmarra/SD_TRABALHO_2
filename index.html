@@ -46,18 +46,22 @@
                         <button class="btn" onclick="startWavy()">Start</button>
                     </div>
                     <div id="wavy-list"></div>
-                </div>
-
-                <div class="section">
+                </div>                <div class="section">
                     <div class="section-title">Quick Start - Continents</div>
                     <div class="startup-controls">
-                        <button class="btn" onclick="quickStartRegion('EU')" style="width: 30%; margin-right: 2%; margin-bottom: 8px;">Europe (EU)</button>
-                        <button class="btn" onclick="quickStartRegion('NA')" style="width: 30%; margin-right: 2%; margin-bottom: 8px;">N. America (NA)</button>
-                        <button class="btn" onclick="quickStartRegion('SA')" style="width: 30%; margin-bottom: 8px;">S. America (SA)</button>
-                        <button class="btn" onclick="quickStartRegion('AF')" style="width: 30%; margin-right: 2%;">Africa (AF)</button>
-                        <button class="btn" onclick="quickStartRegion('AS')" style="width: 30%; margin-right: 2%;">Asia (AS)</button>
-                        <button class="btn" onclick="quickStartRegion('OC')" style="width: 30%;">Oceania (OC)</button>
-                        <button class="btn" onclick="quickStartRegion('AQ')" style="width: 100%; margin-top: 8px;">Antarctica (AQ)</button>
+                        <div class="continent-row">
+                            <button class="btn continent-btn" onclick="quickStartRegion('EU')">Europe (EU)</button>
+                            <button class="btn continent-btn" onclick="quickStartRegion('NA')">N. America (NA)</button>
+                            <button class="btn continent-btn" onclick="quickStartRegion('SA')">S. America (SA)</button>
+                        </div>
+                        <div class="continent-row">
+                            <button class="btn continent-btn" onclick="quickStartRegion('AF')">Africa (AF)</button>
+                            <button class="btn continent-btn" onclick="quickStartRegion('AS')">Asia (AS)</button>
+                            <button class="btn continent-btn" onclick="quickStartRegion('OC')">Oceania (OC)</button>
+                        </div>
+                        <div class="continent-row">
+                            <button class="btn continent-btn full-width" onclick="quickStartRegion('AQ')">Antarctica (AQ)</button>
+                        </div>
                     </div>
                 </div>
             </div>

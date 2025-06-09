@@ -255,6 +255,23 @@ body {
     margin-top: 10px;
 }
 
+.continent-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.continent-btn {
+    width: 32%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.full-width {
+    width: 100%;
+}
+
 .startup-all {
     background-color: #004400;
     border-color: #006600;
@@ -280,4 +297,16 @@ body {
 .message-counter {
     color: #00ff00;
     font-size: 12px;
+}
+
+/* Responsividade para telas menores */
+@media (max-width: 350px) {
+    .continent-row {
+        flex-direction: column;
+    }
+    
+    .continent-btn {
+        width: 100%;
+        margin-bottom: 4px;
+    }
 }
