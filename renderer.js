@@ -683,6 +683,9 @@ function updateMapMarkers() {
     mapMarkers.forEach(marker => map.removeLayer(marker));
     mapMarkers = [];
 
+    // Get current map bounds for wrapping check
+    const bounds = map.getBounds();
+
     // Iterate over all configured components
     componentConfigs.forEach((config, processKey) => {
         if (!config.latitude || !config.longitude) return;
@@ -694,13 +697,13 @@ function updateMapMarkers() {
         let color, fillColor, radius, label;
         switch (config.type) {
             case 'server':
-                color = '#ff4444'; fillColor = '#ff4444'; radius = 10; label = 'Server';
+                color = '#ff4444'; fillColor = '#fe4544'; radius = 10; label = 'Server';
                 break;
             case 'aggregator':
-                color = '#4444ff'; fillColor = '#4444ff'; radius = 8; label = 'Aggregator';
+                color = '#1f1f82'; fillColor = '#4445fe'; radius = 8; label = 'Aggregator';
                 break;
             case 'wavy':
-                color = '#44ff44'; fillColor = '#44ff44'; radius = 6; label = 'Wavy Sensor';
+                color = '#1c821e'; fillColor = '#44ff44'; radius = 6; label = 'Wavy Sensor';
                 break;
             default:
                 return;
@@ -711,24 +714,43 @@ function updateMapMarkers() {
             color = '#888'; fillColor = '#888';
         }
 
-        // Create marker
-        const marker = L.circleMarker([config.latitude, config.longitude], {
-            color, fillColor, fillOpacity: 0.8, radius, weight: 2
-        }).addTo(map);
+        // Base position and additional positions for wrapping
+        const baseLat = config.latitude;
+        const baseLng = config.longitude;
+        const positions = [];
+        // Original position
+        positions.push([baseLat, baseLng]);
+        // Check for left duplicate (subtract 360°)
+        const leftPos = [baseLat, baseLng - 360];
+        if (bounds.contains(L.latLng(leftPos))) {
+            positions.push(leftPos);
+        }
+        // Check for right duplicate (add 360°)
+        const rightPos = [baseLat, baseLng + 360];
+        if (bounds.contains(L.latLng(rightPos))) {
+            positions.push(rightPos);
+        }
 
-        // Popup with status
-        const statusText = isRunning ? 'Running' : 'Stopped';
-        const popupContent = `
-            <div style="font-family: 'Courier New', monospace; color: #000;">
-                <b>${config.id}</b><br>
-                Type: ${label}<br>
-                Continent: ${config.continent}<br>
-                Status: ${statusText}<br>
-                <small>Lat: ${config.latitude.toFixed(4)}, Lng: ${config.longitude.toFixed(4)}</small>
-            </div>
-        `;
-        marker.bindPopup(popupContent);
-        mapMarkers.push(marker);
+        // Create markers for each valid position
+        positions.forEach(pos => {
+            const marker = L.circleMarker(pos, {
+                color, fillColor, fillOpacity: 0.8, radius, weight: 2
+            }).addTo(map);
+    
+            // Popup with status info
+            const statusText = isRunning ? 'Running' : 'Stopped';
+            const popupContent = `
+                <div style="font-family: 'Courier New', monospace; color: #000;">
+                    <b>${config.id}</b><br>
+                    Type: ${label}<br>
+                    Continent: ${config.continent}<br>
+                    Status: ${statusText}<br>
+                    <small>Lat: ${baseLat.toFixed(4)}, Lng: ${baseLng.toFixed(4)}</small>
+                </div>
+            `;
+            marker.bindPopup(popupContent);
+            mapMarkers.push(marker);
+        });
     });
     
     // If no markers found, show a message
