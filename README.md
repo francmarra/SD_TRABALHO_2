@@ -253,12 +253,12 @@ For detailed project structure and development guidelines, see **[PROJECT-STRUCT
 
 The system supports four geographic regions with complete component sets:
 
-| Region | Aggregator | Sensors | Configuration |
-|--------|------------|---------|---------------|
-| **North** | `N_Agr` | `N_Wavy01`, `N_Wavy02` | MongoDB ConfigAgr/ConfigWavy |
-| **South** | `S_Agr` | `S_Wavy01`, `S_Wavy02` | MongoDB ConfigAgr/ConfigWavy |
-| **East** | `E_Agr` | `E_Wavy01`, `E_Wavy02` | MongoDB ConfigAgr/ConfigWavy |
-| **West** | `W_Agr` | `W_Wavy01`, `W_Wavy02` | MongoDB ConfigAgr/ConfigWavy |
+| Region    | Aggregator |        Sensors         |        Configuration         |
+|-----------|------------|------------------------|------------------------------|
+| **North** |   `N_Agr`  | `N_Wavy01`, `N_Wavy02` | MongoDB ConfigAgr/ConfigWavy |
+| **South** |   `S_Agr`  | `S_Wavy01`, `S_Wavy02` | MongoDB ConfigAgr/ConfigWavy |
+| **East**  |   `E_Agr`  | `E_Wavy01`, `E_Wavy02` | MongoDB ConfigAgr/ConfigWavy |
+| **West**  |   `W_Agr`  | `W_Wavy01`, `W_Wavy02` | MongoDB ConfigAgr/ConfigWavy |
 
 ### Scaling Options
 - **Horizontal Sensor Scaling**: Add more Wavy instances per region (`N_Wavy03`, `N_Wavy04`, etc.)
