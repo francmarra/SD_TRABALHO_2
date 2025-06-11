@@ -25,7 +25,7 @@ The system implements a distributed microservices architecture with continent-ba
 │   Wavy Sensors  │    │   Agregadores     │    │ Continental     │
 │  (Data Sources) │───▶│  (Continental     │───▶│ Servers         │
 │                 │    │   Aggregators)    │    │                 │
-│ • Temperature   │    │                   │    │ • EU-S, NA-S   │
+│ • Temperature   │    │                   │    │ • EU-S, NA-S    │
 │ • Humidity      │    │ • EU-Agr01        │    │ • MongoDB       │
 │ • CO2 Levels    │    │ • NA-Agr01        │    │ • Data Storage  │
 │ • EU-Wavy01     │    │ • RabbitMQ        │    │ • Query API     │
@@ -36,7 +36,7 @@ The system implements a distributed microservices architecture with continent-ba
 ┌─────────────────────────────────────────────────────────────────┐
 │                     RabbitMQ Message Broker                     │
 │  • Async Communication  • Message Persistence  • Load Balance   │
-│  • Continent-specific Queues (eu_*, na_*, sa_*, etc.)          │
+│  • Continent-specific Queues (eu_*, na_*, sa_*, etc.)           │
 └─────────────────────────────────────────────────────────────────┘
                                   ▲
                                   │
@@ -51,7 +51,7 @@ The system implements a distributed microservices architecture with continent-ba
 ┌─────────────────────────────────────────────────────────────────┐
 │                  Electron Management Interface                  │
 │   • Process Control   • Real-time Monitoring   • Continental UI │
-│   • EU, NA, SA, AF, AS, OC, AQ Quick Start Buttons             │
+│   • EU, NA, SA, AF, AS, OC, AQ Quick Start Buttons              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -162,7 +162,7 @@ The system has been completely migrated from CSV file configuration and JSON fil
 ```
 Wavy Sensors ── sensor_data ──▶ Regional Queues ──▶ Agregadores
                                                          │
-                                                         ▼
+                                                         │
 Servidor ◀── aggregated_data ─── Aggregator Queues ◀─────┘
     │
     ▼
