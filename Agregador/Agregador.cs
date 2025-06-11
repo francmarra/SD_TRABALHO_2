@@ -39,35 +39,31 @@ class Program
             return;
         }
 
+        // Initialize configuration service
+        configService = new ConfigService(); // Moved up
+
         // Validate aggregator ID format (continent-based)
-        if (!IsValidAggregatorId(aggregatorID))
+        // and load configuration from MongoDB
+        aggregatorConfig = await configService.GetAgrConfigAsync(aggregatorID);
+
+        if (aggregatorConfig == null)
         {
-            Console.WriteLine("❌ Invalid ID format. Expected format: <ContinentCode>-Agr<NN> (e.g., EU-Agr01, NA-Agr01)");
+            Console.WriteLine($"❌ Aggregator {aggregatorID} not found in MongoDB configuration or invalid format.");
+            Console.WriteLine("💡 Ensure the aggregator ID is correct and ConfigImporter has been run.");
             return;
         }
 
         // Extract continent code from aggregator ID
-        continentCode = aggregatorID.Split('-')[0];
-        continentName = ContinentConfig.GetContinentName(continentCode);
+        continentCode = aggregatorConfig.ContinentCode;
+        continentName = aggregatorConfig.Continent; // Use continent name from config
 
         Console.WriteLine($"🚀 Starting {aggregatorID} for {continentName} ({continentCode})...");
 
-        // Initialize configuration service
-        configService = new ConfigService();
-
-        // Load aggregator configuration from database
-        aggregatorConfig = await LoadAggregatorConfigAsync(aggregatorID);
-        if (aggregatorConfig == null)
-        {
-            Console.WriteLine($"❌ Aggregator {aggregatorID} not found in database configuration.");
-            Console.WriteLine("💡 Run ConfigImporter to set up continent-based configuration.");
-            return;
-        }
-
+        // Configuration is already loaded, assign values
         serverId = aggregatorConfig.ServerId;
         rpcQueueName = aggregatorConfig.QueueName;
 
-        Console.WriteLine($"📡 Configuration loaded:");
+        Console.WriteLine($"📡 Configuration loaded from MongoDB:");
         Console.WriteLine($"   • Continent: {aggregatorConfig.Continent} ({aggregatorConfig.ContinentCode})");
         Console.WriteLine($"   • Server: {aggregatorConfig.ServerId}");
         Console.WriteLine($"   • Port: {aggregatorConfig.Port}");
@@ -182,17 +178,17 @@ class Program
             return false;
 
         var wavyContinentCode = parts[0];
-        var wavyPart = parts[1];
+        // var wavyPart = parts[1]; // wavyPart is not used, can be removed or commented
 
         // Check if Wavy belongs to the same continent as this aggregator
-        if (wavyContinentCode != continentCode)
+        if (wavyContinentCode != continentCode) // continentCode is now a class member
             return false;
 
         // Validate Wavy part format (should be Wavy followed by number)
-        if (!wavyPart.StartsWith("Wavy") || wavyPart.Length < 5)
-            return false;        // Check if the number part is valid
-        var numberPart = wavyPart.Substring(4);
-        return int.TryParse(numberPart, out _);
+        // This validation can be enhanced based on specific Wavy ID naming conventions
+        // For now, just checking if it starts with "Wavy" and has a numeric suffix.
+        // Example: EU-Wavy01
+        return ContinentConfig.IsValidWavyId(wavyId); // Using existing validation
     }
 
     static RpcResponse HandleDataRequest(RpcRequest request)
@@ -364,18 +360,5 @@ class Program
         // Check if the number part is valid
         var numberPart = agrPart.Substring(3);
         return int.TryParse(numberPart, out _);
-    }
-
-    static async Task<ConfigAgr?> LoadAggregatorConfigAsync(string aggregatorId)
-    {
-        try
-        {
-            return await configService!.GetAgrConfigAsync(aggregatorId);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Error loading aggregator configuration: {ex.Message}");
-                        return null;
-        }
     }
 }

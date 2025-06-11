@@ -18,7 +18,7 @@ namespace Shared.MongoDB
             {
                 var client = new MongoClient(MongoDBConfig.CONNECTION_STRING);
                 _database = client.GetDatabase(MongoDBConfig.DATABASE_NAME);
-                
+
                 _wavyMessagesCollection = _database.GetCollection<BsonDocument>(MongoDBConfig.WAVY_MESSAGES_COLLECTION);
                 _aggregatedDataCollection = _database.GetCollection<BsonDocument>(MongoDBConfig.AGGREGATED_DATA_COLLECTION);
                 _systemLogsCollection = _database.GetCollection<BsonDocument>(MongoDBConfig.SYSTEM_LOGS_COLLECTION);
@@ -43,9 +43,7 @@ namespace Shared.MongoDB
                 Console.WriteLine($"[MongoDB] Connection test failed: {ex.Message}");
                 return false;
             }
-        }
-
-        public async Task InsertWavyMessageAsync(WavyMessage message)
+        }        public async Task InsertWavyMessageAsync(WavyMessage message)
         {
             try
             {
@@ -53,14 +51,44 @@ namespace Shared.MongoDB
                 {
                     ["wavy_id"] = message.WavyId,
                     ["agregador_id"] = message.AgregadorId,
+                    ["aggregator_id"] = message.AggregatorId,
+                    ["continent"] = message.Continent,
+                    ["continent_code"] = message.ContinentCode,
+                    ["server_id"] = message.ServerId,
                     ["timestamp"] = message.Timestamp,
                     ["received_at"] = DateTime.UtcNow,
-                    ["sensors"] = new BsonArray(message.Sensors.Select(s => new BsonDocument
+                    ["temperature"] = message.Temperature,
+                    ["humidity"] = message.Humidity,
+                    ["co2"] = message.Co2
+                };
+
+                // Handle legacy sensors array if present
+                if (message.Sensors != null && message.Sensors.Length > 0)
+                {
+                    document["sensors"] = new BsonArray(message.Sensors.Select(s => new BsonDocument
                     {
                         ["type"] = s.Type,
                         ["value"] = s.Value
-                    }))
-                };
+                    }));
+                }
+                else
+                {
+                    // Create sensors array from individual sensor values
+                    var sensors = new List<BsonDocument>();
+                    if (message.Temperature != 0)
+                    {
+                        sensors.Add(new BsonDocument { ["type"] = "temperature", ["value"] = message.Temperature });
+                    }
+                    if (message.Humidity != 0)
+                    {
+                        sensors.Add(new BsonDocument { ["type"] = "humidity", ["value"] = message.Humidity });
+                    }
+                    if (message.Co2 != 0)
+                    {
+                        sensors.Add(new BsonDocument { ["type"] = "co2", ["value"] = message.Co2 });
+                    }
+                    document["sensors"] = new BsonArray(sensors);
+                }
 
                 await _wavyMessagesCollection.InsertOneAsync(document);
                 Console.WriteLine($"[MongoDB] Wavy message from {message.WavyId} inserted successfully");
@@ -70,9 +98,7 @@ namespace Shared.MongoDB
                 Console.WriteLine($"[MongoDB] Error inserting Wavy message: {ex.Message}");
                 // Don't throw to avoid breaking the main flow
             }
-        }
-
-        public async Task InsertAggregatedDataAsync(AggregatedData data)
+        }        public async Task InsertAggregatedDataAsync(AggregatedData data)
         {
             try
             {
@@ -85,12 +111,26 @@ namespace Shared.MongoDB
                     ["messages"] = new BsonArray(data.Messages.Select(m => new BsonDocument
                     {
                         ["wavy_id"] = m.WavyId,
+                        ["aggregator_id"] = m.AggregatorId,
+                        ["continent"] = m.Continent,
+                        ["continent_code"] = m.ContinentCode,
+                        ["server_id"] = m.ServerId,
                         ["timestamp"] = m.Timestamp,
-                        ["sensors"] = new BsonArray(m.Sensors.Select(s => new BsonDocument
-                        {
-                            ["type"] = s.Type,
-                            ["value"] = s.Value
-                        }))
+                        ["temperature"] = m.Temperature,
+                        ["humidity"] = m.Humidity,
+                        ["co2"] = m.Co2,
+                        ["sensors"] = m.Sensors != null && m.Sensors.Length > 0 
+                            ? new BsonArray(m.Sensors.Select(s => new BsonDocument
+                            {
+                                ["type"] = s.Type,
+                                ["value"] = s.Value
+                            }))
+                            : new BsonArray(new[]
+                            {
+                                new BsonDocument { ["type"] = "temperature", ["value"] = m.Temperature },
+                                new BsonDocument { ["type"] = "humidity", ["value"] = m.Humidity },
+                                new BsonDocument { ["type"] = "co2", ["value"] = m.Co2 }
+                            }.Where(s => s["value"].AsDouble != 0))
                     }))
                 };
 
@@ -130,13 +170,13 @@ namespace Shared.MongoDB
             {
                 var filter = Builders<BsonDocument>.Filter.Empty;
                 var sort = Builders<BsonDocument>.Sort.Descending("received_at");
-                
+
                 var cursor = await _wavyMessagesCollection.FindAsync(filter, new FindOptions<BsonDocument>
                 {
                     Sort = sort,
                     Limit = limit
                 });
-                
+
                 return await cursor.ToListAsync();
             }
             catch (Exception ex)
@@ -151,19 +191,19 @@ namespace Shared.MongoDB
             try
             {
                 var stats = new Dictionary<string, object>();
-                
+
                 // Count total messages
                 stats["total_wavy_messages"] = await _wavyMessagesCollection.CountDocumentsAsync(Builders<BsonDocument>.Filter.Empty);
                 stats["total_aggregated_batches"] = await _aggregatedDataCollection.CountDocumentsAsync(Builders<BsonDocument>.Filter.Empty);
-                
+
                 // Get unique wavy nodes
                 var wavyIds = await _wavyMessagesCollection.DistinctAsync<string>("wavy_id", Builders<BsonDocument>.Filter.Empty);
                 stats["unique_wavy_nodes"] = (await wavyIds.ToListAsync()).Count;
-                
+
                 // Get unique aggregators
                 var agrIds = await _wavyMessagesCollection.DistinctAsync<string>("agregador_id", Builders<BsonDocument>.Filter.Empty);
                 stats["unique_aggregators"] = (await agrIds.ToListAsync()).Count;
-                
+
                 return stats;
             }
             catch (Exception ex)

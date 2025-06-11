@@ -29,19 +29,19 @@ function setupEventListeners() {
                 commandInput.focus();
             }
         }
-        
+
         // Ctrl+Shift+S to start server
         if (e.ctrlKey && e.shiftKey && e.key === 'S') {
             e.preventDefault();
             startServer();
         }
-        
+
         // Ctrl+Shift+A to start all
         if (e.ctrlKey && e.shiftKey && e.key === 'A') {
             e.preventDefault();
             startAllComponents();
         }
-        
+
         // Ctrl+Shift+X to stop all
         if (e.ctrlKey && e.shiftKey && e.key === 'X') {
             e.preventDefault();
@@ -52,20 +52,20 @@ function setupEventListeners() {
         if (!componentOutputs.has(processId)) {
             componentOutputs.set(processId, '');
         }
-        
+
         // Clean up output and add timestamp for manager messages
         let cleanOutput = output;
         if (cleanOutput.includes('[MANAGER]')) {
             const timestamp = new Date().toLocaleTimeString();
             cleanOutput = cleanOutput.replace('[MANAGER]', `[MANAGER ${timestamp}]`);
         }
-        
+
         componentOutputs.set(processId, componentOutputs.get(processId) + cleanOutput);
-        
+
         if (currentComponent === processId) {
             updateTerminalContent();
         }
-        
+
         // Auto-scroll notification for background processes
         if (currentComponent !== processId && runningProcesses.has(processId)) {
             showNotification(processId, 'New output available');
@@ -75,10 +75,10 @@ function setupEventListeners() {
     ipcRenderer.on('process-closed', (event, processId) => {
         runningProcesses.delete(processId);
         updateComponentStatus(processId, false);
-        
+
         // Add closure message to output
         addToOutput(processId, `\n[MANAGER] Process ${processId} has stopped.\n`);
-        
+
         // Show notification
         showNotification(processId, 'Process stopped');
     });
@@ -124,7 +124,7 @@ async function startAggregator() {
 
     const processId = `aggregator-${aggregatorId}`;
     const result = await ipcRenderer.invoke('start-aggregator', aggregatorId);
-    
+
     if (result.success) {
         runningProcesses.add(processId);
         addAggregatorToList(aggregatorId);
@@ -145,7 +145,7 @@ async function startWavy() {
 
     const processId = `wavy-${wavyId}`;
     const result = await ipcRenderer.invoke('start-wavy', wavyId);
-    
+
     if (result.success) {
         runningProcesses.add(processId);
         addWavyToList(wavyId);
@@ -173,7 +173,7 @@ async function stopAllProcesses() {
             await stopProcess(process.id);
         }
     }
-    
+
     // Clear UI
     runningProcesses.clear();
     document.getElementById('aggregator-list').innerHTML = '';
@@ -190,7 +190,7 @@ async function startAllComponents() {
     } else {
         console.log('Server already running, skipping...');
     }
-    
+
     // Start aggregators for all 7 continents
     const continents = ['EU', 'NA', 'SA', 'AF', 'AS', 'OC', 'AQ'];
     for (const continent of continents) {
@@ -198,17 +198,17 @@ async function startAllComponents() {
         await startAggregator();
         await new Promise(resolve => setTimeout(resolve, 1500));
     }
-    
+
     // Wait for aggregators to initialize
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     // Start wavy sensors for each continent
     for (const continent of continents) {
         document.getElementById('wavy-id').value = `${continent}-Wavy01`;
         await startWavy();
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    
+
     // Show completion message
     addToOutput('server', '\n[MANAGER] Full system startup completed! All continents (EU, NA, SA, AF, AS, OC, AQ) are now active.\n');
 }
@@ -217,15 +217,15 @@ async function quickStartRegion(continent) {
     // Start aggregator for continent
     document.getElementById('aggregator-id').value = `${continent}-Agr01`;
     await startAggregator();
-    
+
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     // Start a couple of wavys for the continent
     document.getElementById('wavy-id').value = `${continent}-Wavy01`;
     await startWavy();
-    
+
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     document.getElementById('wavy-id').value = `${continent}-Wavy02`;
     await startWavy();
 }
@@ -233,36 +233,36 @@ async function quickStartRegion(continent) {
 function addAggregatorToList(aggregatorId) {
     const list = document.getElementById('aggregator-list');
     const processId = `aggregator-${aggregatorId}`;
-    
+
     const item = document.createElement('div');
     item.className = 'component-item';
     item.setAttribute('data-component', processId);
     item.onclick = () => selectComponent(processId);
-    
+
     item.innerHTML = `
         <div class="component-name">${aggregatorId}</div>
         <div class="component-status running" id="status-${processId}">Running</div>
         <button class="btn stop" onclick="event.stopPropagation(); stopProcess('${processId}')" style="margin-top: 5px; font-size: 10px;">Stop</button>
     `;
-    
+
     list.appendChild(item);
 }
 
 function addWavyToList(wavyId) {
     const list = document.getElementById('wavy-list');
     const processId = `wavy-${wavyId}`;
-    
+
     const item = document.createElement('div');
     item.className = 'component-item';
     item.setAttribute('data-component', processId);
     item.onclick = () => selectComponent(processId);
-    
+
     item.innerHTML = `
         <div class="component-name">${wavyId}</div>
         <div class="component-status running" id="status-${processId}">Running</div>
         <button class="btn stop" onclick="event.stopPropagation(); stopProcess('${processId}')" style="margin-top: 5px; font-size: 10px;">Stop</button>
     `;
-    
+
     list.appendChild(item);
 }
 
@@ -271,16 +271,16 @@ function selectComponent(componentId) {
     document.querySelectorAll('.component-item').forEach(item => {
         item.classList.remove('active');
     });
-    
+
     // Add active class to selected component
     const selectedElement = document.querySelector(`[data-component="${componentId}"]`);
     if (selectedElement) {
         selectedElement.classList.add('active');
     }
-    
+
     currentComponent = componentId;
     updateTerminalContent();
-    
+
     // Show terminal input for this component
     const terminalInput = document.getElementById('terminal-input');
     if (runningProcesses.has(componentId)) {
@@ -312,20 +312,20 @@ function addToOutput(componentId, text) {
     if (!componentOutputs.has(componentId)) {
         componentOutputs.set(componentId, '');
     }
-    
+
     let output = componentOutputs.get(componentId) + text;
-    
+
     // Limit overall output size to prevent memory issues
     if (output.length > MAX_OUTPUT_LENGTH) {
         output = output.slice(-MAX_OUTPUT_LENGTH);
     }
-    
+
     componentOutputs.set(componentId, output);
-    
+
     if (currentComponent === componentId) {
         updateTerminalContent();
     }
-    
+
     // Update message count
     updateMessageCount(componentId);
 }
@@ -340,13 +340,13 @@ function updateMessageCount(componentId) {
 
 function updateTerminalContent() {
     const terminalContent = document.getElementById('terminal-content');
-    
+
     if (currentComponent && componentOutputs.has(currentComponent)) {
         let output = componentOutputs.get(currentComponent);
         const isRunning = runningProcesses.has(currentComponent);
         const status = isRunning ? 'RUNNING' : 'STOPPED';
         const statusColor = isRunning ? '#00ff00' : '#ff6666';
-        
+
         // In tail mode, only show the last portion of the output
         if (tailMode && output.length > 0) {
             const lines = output.split('\n');
@@ -355,13 +355,13 @@ function updateTerminalContent() {
                 output = `[...${lines.length - TAIL_MODE_LINES} earlier messages hidden...]\n\n` + output;
             }
         }
-        
+
         terminalContent.innerHTML = `
             <div style="color: #00aaaa; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px;">
                 [${currentComponent.toUpperCase()}] - <span style="color: ${statusColor}">${status}</span>
             </div>` + 
             formatOutput(output);
-            
+
         // Update message count
         updateMessageCount(currentComponent);
     } else if (currentComponent) {
@@ -370,7 +370,7 @@ function updateTerminalContent() {
                 [${currentComponent.toUpperCase()}] Waiting for output...
             </div>`;
     }
-    
+
     // Auto-scroll to bottom
     terminalContent.scrollTop = terminalContent.scrollHeight;
 }
@@ -378,7 +378,7 @@ function updateTerminalContent() {
 function formatOutput(text) {
     // Escape HTML and format special messages
     const escaped = escapeHtml(text);
-    
+
     return escaped
         .replace(/\[MANAGER[^\]]*\]/g, '<span style="color: #00aaaa; font-weight: bold;">$&</span>')
         .replace(/\[ERROR\]/g, '<span style="color: #ff6666; font-weight: bold;">[ERROR]</span>')
@@ -410,7 +410,7 @@ function updateSystemStatus() {
     const statusText = document.getElementById('status-text');
     const serverRunning = runningProcesses.has('server');
     const totalProcesses = runningProcesses.size;
-    
+
     if (serverRunning && totalProcesses > 1) {
         indicator.className = 'status-indicator';
         indicator.style.color = '#00ff00';
@@ -433,20 +433,20 @@ function updateSystemStatus() {
 async function sendCommand() {
     const input = document.getElementById('command-input');
     const command = input.value.trim();
-    
+
     if (command && currentComponent) {
         const success = await ipcRenderer.invoke('send-input', currentComponent, command);
         if (success) {
             addToOutput(currentComponent, `> ${command}\n`);
         }
     }
-    
+
     input.value = '';
 }
 
 async function updateProcessList() {
     const processes = await ipcRenderer.invoke('get-processes');
-    
+
     // Update running processes set
     runningProcesses.clear();
     processes.forEach(proc => {
@@ -454,12 +454,12 @@ async function updateProcessList() {
             runningProcesses.add(proc.id);
         }
     });
-    
+
     // Update UI status indicators
     processes.forEach(proc => {
         updateComponentStatus(proc.id, proc.alive);
     });
-    
+
     // Update server button
     const serverBtn = document.getElementById('btn-server');
     if (runningProcesses.has('server')) {
@@ -471,9 +471,14 @@ async function updateProcessList() {
         serverBtn.onclick = startServer;
         serverBtn.classList.remove('stop');
     }
-    
+
     // Update system status
     updateSystemStatus();
+
+    // Update map markers if map is open
+    if (map) {
+        updateMapMarkers();
+    }
 }
 
 function updateComponentStatus(processId, isRunning) {
@@ -488,18 +493,18 @@ function highlightErrors() {
     if (currentComponent && componentOutputs.has(currentComponent)) {
         const terminalContent = document.getElementById('terminal-content');
         const errorElements = terminalContent.querySelectorAll('span[style*="color: #ff6666"]');
-        
+
         if (errorElements.length > 0) {
             // Flash all error elements
             errorElements.forEach(el => {
                 el.style.backgroundColor = '#440000';
-                
+
                 // Scroll to the first error
                 if (el === errorElements[0]) {
                     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             });
-            
+
             // Remove highlighting after a few seconds
             setTimeout(() => {
                 errorElements.forEach(el => {
@@ -516,12 +521,236 @@ function highlightErrors() {
             message.style.margin = '10px 0';
             message.style.backgroundColor = '#003300';
             message.style.borderRadius = '5px';
-            
+
             terminalContent.insertBefore(message, terminalContent.firstChild);
-            
+
             setTimeout(() => {
                 message.remove();
             }, 3000);
         }
     }
 }
+
+// Accordion functionality
+function toggleAccordion(id) {
+    const content = document.getElementById(`${id}-content`);
+    const arrow = document.getElementById(`${id}-arrow`);
+
+    if (content.classList.contains('collapsed')) {
+        content.classList.remove('collapsed');
+        arrow.classList.remove('rotated');
+        arrow.textContent = '▼';
+    } else {
+        content.classList.add('collapsed');
+        arrow.classList.add('rotated');
+        arrow.textContent = '▶';
+    }
+}
+
+// Map functionality
+let map = null;
+let mapMarkers = [];
+let componentConfigs = new Map(); // Store component configurations with coordinates
+
+async function openMapTab() {
+    const modal = document.getElementById('map-modal');
+    modal.style.display = 'flex';
+
+    // Load configuration data if not already loaded
+    if (componentConfigs.size === 0) {
+        console.log('Loading component configurations from MongoDB...');
+        await loadComponentConfigurations();
+        console.log(`Loaded ${componentConfigs.size} configurations`);
+    }
+
+    // Initialize map if not already done
+    if (!map) {
+        setTimeout(() => {
+            initializeMap();
+        }, 100); // Small delay to ensure the modal is visible
+    } else {
+        // Refresh map size in case of container changes
+        setTimeout(() => {
+            map.invalidateSize();
+            updateMapMarkers();
+        }, 100);
+    }
+}
+
+function closeMapTab() {
+    const modal = document.getElementById('map-modal');
+    modal.style.display = 'none';
+}
+
+// Close modal when clicking outside of it
+document.addEventListener('click', (event) => {
+    const modal = document.getElementById('map-modal');
+    if (event.target === modal) {
+        closeMapTab();
+    }
+});
+
+function initializeMap() {
+    map = L.map('map').setView([20, 0], 2); // Center on world view
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 18
+    }).addTo(map);
+
+    updateMapMarkers();
+}
+
+// Load component configurations from MongoDB
+async function loadComponentConfigurations() {
+    try {
+        const { MongoClient } = require('mongodb');
+        const client = new MongoClient('mongodb+srv://sdmongo25:w7KPjneQrqV7aOdH@sistemasdistribuidos.tybz613.mongodb.net/');
+        
+        await client.connect();
+        const db = client.db('RabbitMQ-Communication');
+
+        // Load server configurations from MongoDB
+        const serverConfigs = await db.collection('ConfigServer').find({}).toArray();
+        serverConfigs.forEach(config => {
+            if (config.latitude && config.longitude) {
+                componentConfigs.set(`server-${config.server_id}`, {
+                    type: 'server',
+                    id: config.server_id,
+                    continent: config.continent,
+                    latitude: parseFloat(config.latitude),
+                    longitude: parseFloat(config.longitude)
+                });
+            }
+        });
+
+        // Load aggregator configurations from MongoDB
+        const agrConfigs = await db.collection('ConfigAgr').find({}).toArray();
+        agrConfigs.forEach(config => {
+            if (config.latitude && config.longitude) {
+                componentConfigs.set(`aggregator-${config.id}`, {
+                    type: 'aggregator',
+                    id: config.id,
+                    continent: config.continent,
+                    latitude: parseFloat(config.latitude),
+                    longitude: parseFloat(config.longitude)
+                });
+            }
+        });
+
+        // Load wavy configurations from MongoDB
+        const wavyConfigs = await db.collection('ConfigWavy').find({}).toArray();
+        wavyConfigs.forEach(config => {
+            if (config.latitude && config.longitude) {
+                componentConfigs.set(`wavy-${config.WAVY_ID}`, {
+                    type: 'wavy',
+                    id: config.WAVY_ID,
+                    continent: config.continent,
+                    latitude: parseFloat(config.latitude),
+                    longitude: parseFloat(config.longitude)
+                });
+            }
+        });
+
+        await client.close();
+        console.log(`Loaded ${componentConfigs.size} component configurations from MongoDB`);
+    } catch (error) {
+        console.error('Error loading configurations from MongoDB:', error);
+    }
+}
+
+function updateMapMarkers() {
+    if (!map) return;
+
+    // Clear existing markers
+    mapMarkers.forEach(marker => map.removeLayer(marker));
+    mapMarkers = [];
+
+    // Get current map bounds for wrapping check
+    const bounds = map.getBounds();
+
+    // Iterate over all configured components
+    componentConfigs.forEach((config, processKey) => {
+        if (!config.latitude || !config.longitude) return;
+
+        // Determine running state
+        const isRunning = (config.type === 'server' && runningProcesses.has('server')) || runningProcesses.has(processKey);
+
+        // Choose styling based on type
+        let color, fillColor, radius, label;
+        switch (config.type) {
+            case 'server':
+                color = '#ff4444'; fillColor = '#fe4544'; radius = 10; label = 'Server';
+                break;
+            case 'aggregator':
+                color = '#1f1f82'; fillColor = '#4445fe'; radius = 8; label = 'Aggregator';
+                break;
+            case 'wavy':
+                color = '#1c821e'; fillColor = '#44ff44'; radius = 6; label = 'Wavy Sensor';
+                break;
+            default:
+                return;
+        }
+
+        // Dim color if not running
+        if (!isRunning) {
+            color = '#888'; fillColor = '#888';
+        }
+
+        // Base position and additional positions for wrapping
+        const baseLat = config.latitude;
+        const baseLng = config.longitude;
+        const positions = [];
+        // Original position
+        positions.push([baseLat, baseLng]);
+        // Check for left duplicate (subtract 360°)
+        const leftPos = [baseLat, baseLng - 360];
+        if (bounds.contains(L.latLng(leftPos))) {
+            positions.push(leftPos);
+        }
+        // Check for right duplicate (add 360°)
+        const rightPos = [baseLat, baseLng + 360];
+        if (bounds.contains(L.latLng(rightPos))) {
+            positions.push(rightPos);
+        }
+
+        // Create markers for each valid position
+        positions.forEach(pos => {
+            const marker = L.circleMarker(pos, {
+                color, fillColor, fillOpacity: 0.8, radius, weight: 2
+            }).addTo(map);
+
+            // Popup with status info
+            const statusText = isRunning ? 'Running' : 'Stopped';
+            const popupContent = `
+                <div style="font-family: 'Courier New', monospace; color: #000;">
+                    <b>${config.id}</b><br>
+                    Type: ${label}<br>
+                    Continent: ${config.continent}<br>
+                    Status: ${statusText}<br>
+                    <small>Lat: ${baseLat.toFixed(4)}, Lng: ${baseLng.toFixed(4)}</small>
+                </div>
+            `;
+            marker.bindPopup(popupContent);
+            mapMarkers.push(marker);
+        });
+    });
+
+    // If no markers found, show a message
+    if (mapMarkers.length === 0 && runningProcesses.size > 0) {
+        console.log('No coordinate data found for running processes. Make sure configurations are loaded.');
+    }
+}
+
+// Initialize accordion state on page load
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Quick Start accordion as open by default
+    const quickStartContent = document.getElementById('quick-start-content');
+    const quickStartArrow = document.getElementById('quick-start-arrow');
+
+    if (quickStartContent && quickStartArrow) {
+        quickStartContent.classList.remove('collapsed');
+        quickStartArrow.classList.remove('rotated');
+        quickStartArrow.textContent = '▼';
+    }
+});

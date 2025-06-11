@@ -11,13 +11,16 @@ using Shared.MongoDB;
 class Program
 {
     static RabbitMQRpcClient? rpcClient;
-    static ConfigService? configService;    static string wavyID = "";
-    static string continentCode = "";
-    static string continentName = "";
-    static string aggregatorId = "";
-    static string serverId = "";
-    static string rpcQueueName = "";
-    static volatile bool encerrarExecucao = false;    static async Task Main(string[] args)
+    static ConfigService? configService;    
+    static string wavyID = "";
+    static string continentCode = ""; // Loaded from MongoDB config
+    static string continentName = ""; // Loaded from MongoDB config
+    static string aggregatorId = "";  // Loaded from MongoDB config
+    static string serverId = "";      // Loaded from MongoDB config
+    static string rpcQueueName = "";  // Determined from MongoDB config
+    static volatile bool encerrarExecucao = false;    
+
+    static async Task Main(string[] args)
     {
         // Initialize configuration service
         configService = new ConfigService();
@@ -27,6 +30,8 @@ class Program
         {
             wavyID = args[0].Trim();
         }
+
+        ConfigWavy? wavyConfig = null; 
 
         // Loop até que um ID válido seja fornecido
         while (true)
@@ -38,64 +43,53 @@ class Program
                 wavyID = Console.ReadLine()?.Trim() ?? "";
             }
 
-            if (string.IsNullOrEmpty(wavyID) || !wavyID.Contains('-') || !ContinentConfig.IsValidWavyId(wavyID))
+            if (string.IsNullOrEmpty(wavyID))
             {
-                Console.WriteLine("ID inválido. O ID deve estar no formato <Continente>-WavyXX (ex: EU-Wavy01, NA-Wavy02).");
-                Console.WriteLine("Continentes suportados: EU, NA, SA, AF, AS, OC, AQ");
-                wavyID = ""; // Reset to ask again
-                continue;
-            }
-            if (!await IsWavyConfiguredAsync(wavyID))
-            {
-                Console.WriteLine($"Wavy {wavyID} não está configurada! Insira um ID válido.");
+                Console.WriteLine("ID inválido. O ID não pode ser vazio.");
                 wavyID = ""; // Reset to ask again
                 continue;
             }
 
-            // Status
-            var status = await GetWavyStatusAsync(wavyID);
-            if (status == "0")
+            // Load wavy configuration from MongoDB
+            wavyConfig = await configService.GetWavyConfigAsync(wavyID);
+            if (wavyConfig == null)
             {
-                Console.WriteLine($"{wavyID} Offline! Deseja voltar a ligá-la? (y/n) [y]: ");
-                string input = (Console.ReadLine() ?? "").Trim().ToLower();
-                // Se o input for y ou Enter
-                if (string.IsNullOrEmpty(input) || input == "y")
-                {
-                    await UpdateWavyStatusAsync(wavyID, "1");
-                    // Atualiza também o Timestamp
-                    await UpdateWavyLastSyncAsync(wavyID, DateTime.Now);
-                    Console.WriteLine($"{wavyID} foi atualizado para Online.");
-                }
-                else
-                {
-                    // Volta a pedir o ID
-                    wavyID = ""; // Reset to ask again
-                    continue;
-                }
+                Console.WriteLine($"Wavy {wavyID} não encontrada na configuração do MongoDB ou ID inválido.");
+                Console.WriteLine("💡 Verifique o ID e se o ConfigImporter foi executado.");
+                wavyID = ""; // Reset to ask again
+                continue;
             }
-            break;
-        }
-
-        // Load wavy configuration and continent information
-        var wavyConfig = await configService.GetWavyConfigAsync(wavyID);
-        if (wavyConfig != null)
-        {
+            
+            // Assign loaded configuration to static fields
             continentCode = wavyConfig.ContinentCode;
             continentName = wavyConfig.Continent;
             aggregatorId = wavyConfig.AggregatorId;
             serverId = wavyConfig.ServerId;
-            Console.WriteLine($"[{wavyID}] Configuração carregada: {continentName} ({continentCode})");
-        }
-        else
-        {
-            Console.WriteLine($"Erro: Não foi possível carregar a configuração para {wavyID}");
-            return;
-        }
+            Console.WriteLine($"[{wavyID}] Configuração carregada do MongoDB: {continentName} ({continentCode}), Aggregator: {aggregatorId}, Server: {serverId}");
 
-        // Determina o continente da wavy
-        string[] parts = wavyID.Split('-');
-        string localContinentCode = parts[0];
-        rpcQueueName = RabbitMQConfig.RPC_QUEUE_PREFIX + localContinentCode;
+            // Status check and update
+            if (wavyConfig.Status == 0) 
+            {
+                Console.Write($"{wavyID} Offline! Deseja voltar a ligá-la? (y/n) [y]: ");
+                string input = (Console.ReadLine() ?? "").Trim().ToLower();
+                if (string.IsNullOrEmpty(input) || input == "y")
+                {
+                    // Update status in MongoDB
+                    await configService.UpdateWavyStatusAsync(wavyID, 1, DateTime.UtcNow);
+                    Console.WriteLine($"{wavyID} foi atualizado para Online no MongoDB.");
+                    // wavyConfig.Status = 1; // The local object is not used beyond this point for status
+                }
+                else
+                {
+                    wavyID = ""; 
+                    continue; 
+                }
+            }
+            break; 
+        }
+        
+        // Determine RPC queue name based on the Wavy's continent code from loaded config
+        rpcQueueName = RabbitMQConfig.RPC_QUEUE_PREFIX + continentCode; 
 
         Console.WriteLine($"[{wavyID}] Inicializando RabbitMQ RPC Client...");
 
@@ -173,7 +167,8 @@ class Program
         int segundos = 0;
 
         while (!encerrarExecucao && rpcClient != null)
-        {            try
+        {            
+            try
             {
                 double temperatura = Math.Round(15 + rnd.NextDouble() * 10, 2);
                 
@@ -184,13 +179,13 @@ class Program
                     wavyMessage = new WavyMessage
                     {
                         WavyId = wavyID,
-                        Continent = continentName,
-                        ContinentCode = continentCode,
-                        AggregatorId = aggregatorId,
-                        ServerId = serverId,
+                        Continent = continentName,       // Uses static field loaded in Main
+                        ContinentCode = continentCode,   // Uses static field loaded in Main
+                        AggregatorId = aggregatorId,     // Uses static field loaded in Main
+                        ServerId = serverId,             // Uses static field loaded in Main
                         Temperature = temperatura,
                         Humidity = umidade,
-                        Co2 = 0, // No CO2 sensor for now
+                        Co2 = 0, 
                         Timestamp = DateTime.Now.ToString("o")
                     };
                 }
@@ -199,13 +194,13 @@ class Program
                     wavyMessage = new WavyMessage
                     {
                         WavyId = wavyID,
-                        Continent = continentName,
-                        ContinentCode = continentCode,
-                        AggregatorId = aggregatorId,
-                        ServerId = serverId,
+                        Continent = continentName,       // Uses static field loaded in Main
+                        ContinentCode = continentCode,   // Uses static field loaded in Main
+                        AggregatorId = aggregatorId,     // Uses static field loaded in Main
+                        ServerId = serverId,             // Uses static field loaded in Main
                         Temperature = temperatura,
-                        Humidity = 0, // No humidity reading on odd seconds
-                        Co2 = 0, // No CO2 sensor for now
+                        Humidity = 0, 
+                        Co2 = 0, 
                         Timestamp = DateTime.Now.ToString("o")
                     };
                 }
@@ -218,10 +213,11 @@ class Program
                 };
 
                 var response = await rpcClient.CallAsync(rpcQueueName, request, TimeSpan.FromSeconds(10));
-                  if (response.Status == "OK")
+                if (response.Status == "OK")
                 {
                     Console.WriteLine($"[{wavyID}] Dados enviados com sucesso: {response.Message}");
-                    await UpdateWavyLastSyncAsync(wavyID, DateTime.Now);
+                    // Update LastSync and ensure status is 1 (Online)
+                    await configService.UpdateWavyStatusAsync(wavyID, 1, DateTime.UtcNow);
                 }
                 else
                 {
@@ -259,6 +255,9 @@ class Program
 
                         var response = await rpcClient.CallAsync(rpcQueueName, request, TimeSpan.FromSeconds(10));
                         Console.WriteLine($"[{wavyID}] Resposta do Agregador: {response.Message}");
+                        // Update Wavy status to Offline (0) in MongoDB upon clean shutdown
+                        await configService.UpdateWavyStatusAsync(wavyID, 0, DateTime.UtcNow);
+                        Console.WriteLine($"[{wavyID}] Status atualizado para Offline no MongoDB.");
                     }
                     catch (Exception ex)
                     {
@@ -270,75 +269,7 @@ class Program
                 break;
             }
         }
-    }    // Verifica se a wavy é configurada
-    static async Task<bool> IsWavyConfiguredAsync(string wavyID)
-    {
-        try
-        {
-            if (configService == null) return false;
-            
-            var config = await configService.GetWavyConfigAsync(wavyID);
-            return config != null;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao verificar configuração da wavy: {ex.Message}");
-            return false;
-        }
     }
-
-    // Pega no status da wavy 0/1
-    static async Task<string> GetWavyStatusAsync(string wavyID)
-    {
-        try
-        {
-            if (configService == null) return "0";
-            
-            var config = await configService.GetWavyConfigAsync(wavyID);
-            return config?.Status.ToString() ?? "0";
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao obter status da wavy: {ex.Message}");
-            return "0";
-        }
-    }
-
-    // Dá update no status da wavy
-    static async Task UpdateWavyStatusAsync(string wavyID, string newStatus)
-    {
-        try
-        {
-            if (configService == null) return;
-            
-            var config = await configService.GetWavyConfigAsync(wavyID);
-            if (config != null)
-            {
-                await configService.UpdateWavyStatusAsync(wavyID, int.Parse(newStatus), config.LastSync);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao atualizar status para {wavyID}: {ex.Message}");
-        }
-    }
-
-    // Dá update no timestamp da wavy
-    static async Task UpdateWavyLastSyncAsync(string wavyID, DateTime timestamp)
-    {
-        try
-        {
-            if (configService == null) return;
-            
-            var config = await configService.GetWavyConfigAsync(wavyID);
-            if (config != null)
-            {
-                await configService.UpdateWavyStatusAsync(wavyID, config.Status, timestamp);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao atualizar last_sync para {wavyID}: {ex.Message}");
-        }
-    }
+    // Removed local helper methods: IsWavyConfiguredAsync, GetWavyStatusAsync, UpdateWavyStatusAsync, UpdateWavyLastSyncAsync.
+    // Configuration and status are now handled via ConfigService and direct MongoDB interactions.
 }

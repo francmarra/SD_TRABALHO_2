@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Distributed System Manager</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
     <div class="container">
@@ -46,18 +47,33 @@
                         <button class="btn" onclick="startWavy()">Start</button>
                     </div>
                     <div id="wavy-list"></div>
+                </div>                <div class="section">
+                    <div class="section-title accordion-header" onclick="toggleAccordion('quick-start')">
+                        <span>Quick Start</span>
+                        <span class="accordion-arrow" id="quick-start-arrow">▼</span>
+                    </div>
+                    <div class="accordion-content" id="quick-start-content">
+                        <div class="startup-controls">
+                            <div class="continent-row">
+                                <button class="btn continent-btn" onclick="quickStartRegion('EU')">Europe<br>(EU)</button>
+                                <button class="btn continent-btn" onclick="quickStartRegion('NA')">N. America<br>(NA)</button>
+                                <button class="btn continent-btn" onclick="quickStartRegion('SA')">S. America<br>(SA)</button>
+                            </div>
+                            <div class="continent-row">
+                                <button class="btn continent-btn" onclick="quickStartRegion('AF')">Africa<br>(AF)</button>
+                                <button class="btn continent-btn" onclick="quickStartRegion('AS')">Asia<br>(AS)</button>
+                                <button class="btn continent-btn" onclick="quickStartRegion('OC')">Oceania<br>(OC)</button>
+                            </div>
+                            <div class="continent-row">
+                                <button class="btn continent-btn full-width" onclick="quickStartRegion('AQ')">Antarctica<br>(AQ)</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
+                
                 <div class="section">
-                    <div class="section-title">Quick Start - Continents</div>
-                    <div class="startup-controls">
-                        <button class="btn" onclick="quickStartRegion('EU')" style="width: 30%; margin-right: 2%; margin-bottom: 8px;">Europe (EU)</button>
-                        <button class="btn" onclick="quickStartRegion('NA')" style="width: 30%; margin-right: 2%; margin-bottom: 8px;">N. America (NA)</button>
-                        <button class="btn" onclick="quickStartRegion('SA')" style="width: 30%; margin-bottom: 8px;">S. America (SA)</button>
-                        <button class="btn" onclick="quickStartRegion('AF')" style="width: 30%; margin-right: 2%;">Africa (AF)</button>
-                        <button class="btn" onclick="quickStartRegion('AS')" style="width: 30%; margin-right: 2%;">Asia (AS)</button>
-                        <button class="btn" onclick="quickStartRegion('OC')" style="width: 30%;">Oceania (OC)</button>
-                        <button class="btn" onclick="quickStartRegion('AQ')" style="width: 100%; margin-top: 8px;">Antarctica (AQ)</button>
+                    <div class="section-title map-tab" onclick="openMapTab()">
+                        <span>🗺️ Map</span>
                     </div>
                 </div>
             </div>
@@ -99,10 +115,37 @@
                 <div class="terminal-input" id="terminal-input">
                     <input type="text" id="command-input" placeholder="Type command and press Enter..." />
                 </div>
+            </div>        </div>
+    </div>
+
+    <!-- Map Tab Modal -->
+    <div class="map-modal" id="map-modal" style="display: none;">
+        <div class="map-modal-content">
+            <div class="map-header">
+                <h3>🗺️ System Components Map</h3>
+                <button class="close-btn" onclick="closeMapTab()">×</button>
+            </div>
+            <div class="map-container">
+                <div id="map" style="height: 500px; width: 100%;"></div>
+            </div>
+            <div class="map-legend">
+                <div class="legend-item">
+                    <span class="legend-color server-color"></span>
+                    <span>Servers</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color aggregator-color"></span>
+                    <span>Aggregators</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color wavy-color"></span>
+                    <span>Wavy Sensors</span>
+                </div>
             </div>
         </div>
     </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="renderer.js"></script>
 </body>
 </html>

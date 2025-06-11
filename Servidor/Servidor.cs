@@ -25,36 +25,29 @@ class Program
         {
             Console.Write("ID do Servidor: ");
             serverId = Console.ReadLine()?.Trim() ?? "";
-            if (string.IsNullOrEmpty(serverId) || !serverId.Contains('-') || !ContinentConfig.IsValidServerId(serverId))
+            if (string.IsNullOrEmpty(serverId))
             {
-                Console.WriteLine("ID inválido. O ID deve estar no formato <Continente>-S (ex: EU-S, NA-S).");
-                Console.WriteLine("Continentes suportados: EU, NA, SA, AF, AS, OC, AQ");
-                continue;
+                 Console.WriteLine("ID inválido. O ID não pode ser vazio.");
+                 continue;
             }
 
-            // Verify server is configured
-            if (!await IsServerConfiguredAsync(serverId))
+            // Load server configuration from MongoDB
+            var serverConfig = await configService.GetServerConfigAsync(serverId);
+            if (serverConfig == null)
             {
-                Console.WriteLine($"Servidor {serverId} não está configurado! Insira um ID válido.");
+                Console.WriteLine($"Servidor {serverId} não encontrado na configuração do MongoDB ou ID inválido.");
+                Console.WriteLine("Continentes suportados podem ser inferidos dos IDs de servidor configurados (ex: EU-S, NA-S).");
+                Console.WriteLine("💡 Verifique o ID e se o ConfigImporter foi executado.");
                 continue;
             }
-
+            
+            continentCode = serverConfig.ContinentCode;
+            continentName = serverConfig.Continent;
+            Console.WriteLine($"[{serverId}] Configuração carregada do MongoDB: {continentName} ({continentCode})");
             break;
         }
 
-        // Load server configuration and continent information
-        var serverConfig = await configService.GetServerConfigAsync(serverId);
-        if (serverConfig != null)
-        {
-            continentCode = serverConfig.ContinentCode;
-            continentName = serverConfig.Continent;
-            Console.WriteLine($"[{serverId}] Configuração carregada: {continentName} ({continentCode})");
-        }
-        else
-        {
-            Console.WriteLine($"Erro: Não foi possível carregar a configuração para {serverId}");
-            return;
-        }        // Initialize MongoDB
+        // Initialize MongoDB
         Console.WriteLine($"[{serverId}] Inicializando MongoDB...");
         try
         {
@@ -188,23 +181,6 @@ class Program
                 encerrarExecucao = true;
                 break;
             }
-        }
-    }
-
-    // Verifica se o servidor é configurado
-    static async Task<bool> IsServerConfiguredAsync(string serverId)
-    {
-        try
-        {
-            if (configService == null) return false;
-            
-            var config = await configService.GetServerConfigAsync(serverId);
-            return config != null;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao verificar configuração do servidor: {ex.Message}");
-            return false;
         }
     }
 }
