@@ -26,9 +26,16 @@ namespace Shared.Models
         public double Latitude { get; set; }
 
         [BsonElement("longitude")]
-        public double Longitude { get; set; }
-
-        [BsonElement("created_at")]
+        public double Longitude { get; set; }        [BsonElement("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [BsonElement("ocean")]
+        public string Ocean { get; set; } = string.Empty;
+
+        [BsonElement("area_type")]
+        public string AreaType { get; set; } = string.Empty;
+
+        [BsonElement("region_coverage")]
+        public string RegionCoverage { get; set; } = string.Empty;
     }
 }

@@ -20,12 +20,10 @@ namespace Shared.Models
 
         [BsonElement("queue_name")]
         public string QueueName { get; set; } = string.Empty;        [BsonElement("IsActive")]
-        public bool IsActive { get; set; } = true;
-
-        [BsonElement("latitude")]
+        public bool IsActive { get; set; } = true;        [BsonElement("Latitude")]
         public double Latitude { get; set; } = 0.0;
 
-        [BsonElement("longitude")]
+        [BsonElement("Longitude")]
         public double Longitude { get; set; } = 0.0;
 
         [BsonElement("CreatedAt")]

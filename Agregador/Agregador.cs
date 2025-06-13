@@ -62,6 +62,7 @@ class Program
         Console.WriteLine($"   • Continent: {aggregatorConfig.Continent} ({continentCode})");
         Console.WriteLine($"   • Ocean: {aggregatorConfig.Ocean}");
         Console.WriteLine($"   • Area Type: {aggregatorConfig.AreaType}");
+        Console.WriteLine($"   • Location: {aggregatorConfig.Latitude:F2}°, {aggregatorConfig.Longitude:F2}°");
         Console.WriteLine($"   • Server: {serverId}");
         Console.WriteLine($"   • Port: {aggregatorConfig.Port}");
         Console.WriteLine($"   • Queue: {rpcQueueName}");

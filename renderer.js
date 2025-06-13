@@ -648,30 +648,32 @@ async function loadComponentConfigurations() {
                     longitude: parseFloat(config.longitude)
                 });
             }
-        });
-
-        // Load aggregator configurations from MongoDB
+        });        // Load aggregator configurations from MongoDB
         const agrConfigs = await db.collection('ConfigAgr').find({}).toArray();
+        console.log(`Found ${agrConfigs.length} aggregator configs in MongoDB`);
         agrConfigs.forEach(config => {
-            if (config.latitude && config.longitude) {
-                componentConfigs.set(`aggregator-${config.id}`, {
+            console.log(`Processing aggregator config:`, config.AggregatorId, config.Latitude, config.Longitude);
+            if (config.Latitude && config.Longitude) {
+                componentConfigs.set(`aggregator-${config.AggregatorId}`, {
                     type: 'aggregator',
-                    id: config.id,
-                    continent: config.continent,
-                    latitude: parseFloat(config.latitude),
-                    longitude: parseFloat(config.longitude)
+                    id: config.AggregatorId,
+                    continent: config.Region,
+                    ocean: config.Ocean,
+                    areaType: config.AreaType,
+                    latitude: parseFloat(config.Latitude),
+                    longitude: parseFloat(config.Longitude)
                 });
+                console.log(`Added aggregator ${config.AggregatorId} to map at ${config.Latitude}, ${config.Longitude}`);
             }
-        });
-
-        // Load wavy configurations from MongoDB
+        });// Load wavy configurations from MongoDB
         const wavyConfigs = await db.collection('ConfigWavy').find({}).toArray();
         wavyConfigs.forEach(config => {
             if (config.latitude && config.longitude) {
                 componentConfigs.set(`wavy-${config.WAVY_ID}`, {
                     type: 'wavy',
                     id: config.WAVY_ID,
-                    continent: config.continent,
+                    ocean: config.ocean,
+                    areaType: config.area_type,
                     latitude: parseFloat(config.latitude),
                     longitude: parseFloat(config.longitude)
                 });
@@ -688,19 +690,32 @@ async function loadComponentConfigurations() {
 function updateMapMarkers() {
     if (!map) return;
 
+    console.log(`Updating map markers. Component configs: ${componentConfigs.size}, Running processes: ${runningProcesses.size}`);
+    console.log('Component configs:', Array.from(componentConfigs.keys()));
+    console.log('Running processes:', Array.from(runningProcesses));
+
     // Clear existing markers
     mapMarkers.forEach(marker => map.removeLayer(marker));
     mapMarkers = [];
 
     // Get current map bounds for wrapping check
-    const bounds = map.getBounds();
-
-    // Iterate over all configured components
+    const bounds = map.getBounds();    // Iterate over all configured components
     componentConfigs.forEach((config, processKey) => {
         if (!config.latitude || !config.longitude) return;
 
-        // Determine running state
-        const isRunning = (config.type === 'server' && runningProcesses.has('server')) || runningProcesses.has(processKey);
+        // Determine running state - show all aggregators, but highlight running ones
+        let isRunning = false;
+        if (config.type === 'server' && runningProcesses.has('server')) {
+            isRunning = true;
+        } else if (config.type === 'aggregator') {
+            // For aggregators, check if this specific aggregator is running
+            isRunning = runningProcesses.has(processKey);
+        } else if (config.type === 'wavy') {
+            // For wavy sensors, check if this specific sensor is running
+            isRunning = runningProcesses.has(processKey);
+        }
+
+        console.log(`Processing ${config.type} ${config.id}: running=${isRunning}, processKey=${processKey}`);
 
         // Choose styling based on type
         let color, fillColor, radius, label;
@@ -744,29 +759,53 @@ function updateMapMarkers() {
         positions.forEach(pos => {
             const marker = L.circleMarker(pos, {
                 color, fillColor, fillOpacity: 0.8, radius, weight: 2
-            }).addTo(map);
-
-            // Popup with status info
+            }).addTo(map);            // Popup with status info
             const statusText = isRunning ? 'Running' : 'Stopped';
+            let locationInfo = '';
+            if (config.continent) {
+                locationInfo = `Continent: ${config.continent}<br>`;
+            }
+            if (config.ocean) {
+                locationInfo += `Ocean: ${config.ocean}<br>`;
+            }
+            if (config.areaType) {
+                locationInfo += `Area: ${config.areaType}<br>`;
+            }
+            
             const popupContent = `
                 <div style="font-family: 'Courier New', monospace; color: #000;">
                     <b>${config.id}</b><br>
                     Type: ${label}<br>
-                    Continent: ${config.continent}<br>
-                    Status: ${statusText}<br>
+                    ${locationInfo}Status: ${statusText}<br>
                     <small>Lat: ${baseLat.toFixed(4)}, Lng: ${baseLng.toFixed(4)}</small>
                 </div>
             `;
             marker.bindPopup(popupContent);
             mapMarkers.push(marker);
         });
-    });
-
-    // If no markers found, show a message
-    if (mapMarkers.length === 0 && runningProcesses.size > 0) {
-        console.log('No coordinate data found for running processes. Make sure configurations are loaded.');
+    });    // If no markers found, show a message
+    if (mapMarkers.length === 0) {
+        console.log('No markers created. Component configs available:', componentConfigs.size);
+        if (componentConfigs.size === 0) {
+            console.log('No configurations loaded. Try opening the map tab to load configurations.');
+        }
+    } else {
+        console.log(`Created ${mapMarkers.length} map markers`);
     }
 }
+
+// Test function to verify configurations (can be called from browser console)
+window.testMapConfigs = function() {
+    console.log('=== Map Configuration Test ===');
+    console.log(`Total configurations loaded: ${componentConfigs.size}`);
+    console.log(`Running processes: ${runningProcesses.size}`);
+    
+    componentConfigs.forEach((config, key) => {
+        console.log(`${key}: ${config.type} ${config.id} at ${config.latitude}, ${config.longitude}`);
+    });
+    
+    console.log('Running processes:', Array.from(runningProcesses));
+};
 
 // Initialize accordion state on page load
 document.addEventListener('DOMContentLoaded', () => {

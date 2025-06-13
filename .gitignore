@@ -409,3 +409,9 @@ ConfigImporterNew.csproj
 configs/
 
 SubscriptionImporter/
+
+WavyConfigImporter/
+
+WavyVerification/
+
+AggregatorConfigImporter/
