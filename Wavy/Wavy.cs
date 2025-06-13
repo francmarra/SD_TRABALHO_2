@@ -123,11 +123,25 @@ class Program
                 wavyMessage.Longitude = longitude;
                 wavyMessage.Timestamp = DateTime.UtcNow.ToString("o");
 
-                // Publish data to ocean data topic
-                string routingKey = $"ocean.data.{wavyID}";
-                publisher.PublishMessage("ocean_data_exchange", routingKey, JsonSerializer.Serialize(wavyMessage));
-                
-                Console.WriteLine($"[{wavyID}] Dados oceânicos publicados: SST={wavyMessage.SeaSurfaceTemperatureCelsius:F1}°C, Lat={latitude:F4}, Lon={longitude:F4}");
+                // Get Wavy configuration for ocean and area type
+                var wavyConfig = await configService!.GetWavyConfigAsync(wavyID);
+                if (wavyConfig != null)
+                {
+                    // Create routing key based on ocean and area type for targeted aggregator matching
+                    string routingKey = $"ocean.data.{wavyConfig.Ocean.ToLower()}.{wavyConfig.AreaType.ToLower().Replace("-", "_")}";
+                    
+                    Console.WriteLine($"[{wavyID}] Publishing to routing key: {routingKey}");
+                    publisher.PublishMessage("ocean_data_exchange", routingKey, JsonSerializer.Serialize(wavyMessage));
+                    
+                    Console.WriteLine($"[{wavyID}] Dados oceânicos publicados: SST={wavyMessage.SeaSurfaceTemperatureCelsius:F1}°C, Ocean={wavyConfig.Ocean}, AreaType={wavyConfig.AreaType}, Lat={latitude:F4}, Lon={longitude:F4}");
+                }
+                else
+                {
+                    // Fallback to generic routing if config not found
+                    string routingKey = $"ocean.data.{wavyID}";
+                    publisher.PublishMessage("ocean_data_exchange", routingKey, JsonSerializer.Serialize(wavyMessage));
+                    Console.WriteLine($"[{wavyID}] Dados oceânicos publicados (generic routing): SST={wavyMessage.SeaSurfaceTemperatureCelsius:F1}°C, Lat={latitude:F4}, Lon={longitude:F4}");
+                }
                 
                 // Update LastSync status in MongoDB
                 await configService!.UpdateWavyStatusAsync(wavyID, 1, DateTime.UtcNow);

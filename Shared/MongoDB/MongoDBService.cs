@@ -90,10 +90,8 @@ namespace Shared.MongoDB
                         new BsonDocument { ["type"] = "surface_pressure", ["value"] = message.SurfacePressureHpa, ["unit"] = "hpa" },
                         new BsonDocument { ["type"] = "temperature_gradient", ["value"] = message.TemperatureGradientCKm, ["unit"] = "c/km" }
                     })
-                };
-
-                await _wavyMessagesCollection.InsertOneAsync(document);
-                Console.WriteLine($"[MongoDB] Wavy message from {message.WavyId} inserted successfully");
+                };                await _wavyMessagesCollection.InsertOneAsync(document);
+                // Console.WriteLine($"[MongoDB] Wavy message from {message.WavyId} inserted successfully");
             }
             catch (Exception ex)
             {

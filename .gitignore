@@ -415,3 +415,9 @@ WavyConfigImporter/
 WavyVerification/
 
 AggregatorConfigImporter/
+
+ConnectionTest/
+
+DebugWavy/
+
+RoutingTest/

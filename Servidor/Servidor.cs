@@ -69,8 +69,7 @@ class Program
             Console.WriteLine($"[{serverId}] Erro ao conectar com MongoDB: {ex.Message}. Continuando apenas com arquivos locais.");
             mongoService = null;
         }
-        
-        // Setup continent-specific server queue
+          // Setup continent-specific server queue
         string serverQueue = ContinentConfig.GetQueueName(continentCode, "server");
         Console.WriteLine($"[{serverId}] Inicializando RabbitMQ Subscriber...");
 
@@ -78,23 +77,25 @@ class Program
         {
             subscriber = new RabbitMQSubscriber(serverQueue);
             
-            // Subscribe to data messages
-            subscriber.SubscribeToData(OnDataReceived);
+            // Subscribe to continent-specific data routing instead of generic data
+            string continentRoutingKey = $"server.data.{continentCode.ToLower()}";
+            subscriber.SubscribeToTopic("server_data_exchange", continentRoutingKey, OnRegionalDataReceived);
             
             // Subscribe to shutdown messages
             subscriber.SubscribeToShutdown(OnShutdownReceived);
             
-            Console.WriteLine($"[{serverId}] RabbitMQ configurado com sucesso.");
-            Console.WriteLine($"[{serverId}] Queue: {serverQueue}");
-            Console.WriteLine($"[{serverId}] A ouvir mensagens de dados e shutdown via RabbitMQ...\n");        }
+            Console.WriteLine($"✅ RabbitMQ configurado com sucesso.");
+            Console.WriteLine($"   • Queue: {serverQueue}");
+            Console.WriteLine($"   • Region: {continentName} ({continentCode})");
+            Console.WriteLine($"   • Routing Pattern: {continentRoutingKey}");
+            Console.WriteLine($"[{serverId}] A ouvir mensagens de dados regionais e shutdown via RabbitMQ...\n");
+        }
         catch (Exception ex)
         {
             Console.WriteLine($"[{serverId}] Erro ao configurar RabbitMQ: {ex.Message}");
             return;
-        }
-
-        // Monitorar comando de desligamento do console
-        Task.Run(() => MonitorarComandoDesligar());
+        }        // Monitorar comando de desligamento do console
+        _ = Task.Run(() => MonitorarComandoDesligar());
 
         // Mantém a aplicação em execução
         while (!encerrarExecucao)
@@ -117,7 +118,48 @@ class Program
         
         subscriber?.Dispose();
         Console.WriteLine($"[{serverId}] RabbitMQ resources cleaned up.");
-    }    static async void OnDataReceived(string message)
+    }    static async void OnRegionalDataReceived(string routingKey, string message)
+    {
+        try
+        {
+            var aggregatedData = JsonSerializer.Deserialize<AggregatedData>(message);
+            if (aggregatedData == null) return;
+
+            Console.WriteLine($"[{serverId}] Dados regionais recebidos de [{aggregatedData.AgregadorId}] via {routingKey} - {aggregatedData.Messages.Count} mensagens");
+            Console.WriteLine($"🌍 [{serverId}] Routing verification: {routingKey} → Region: {continentName} ({continentCode})");
+
+            // Save to MongoDB if available
+            if (mongoService != null)
+            {
+                try
+                {
+                    await mongoService.InsertAggregatedDataAsync(aggregatedData);
+                    
+                    // Also save individual wavy messages
+                    foreach (var wavyMessage in aggregatedData.Messages)
+                    {
+                        await mongoService.InsertWavyMessageAsync(wavyMessage);
+                    }
+                    
+                    Console.WriteLine($"[{serverId}] Dados salvos no MongoDB com sucesso");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[{serverId}] Erro ao salvar no MongoDB: {ex.Message}");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[{serverId}] MongoDB não disponível - dados não foram salvos");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[{serverId}] Erro ao processar dados regionais: {ex.Message}");
+        }
+    }
+
+    static async void OnDataReceived(string message)
     {
         try
         {

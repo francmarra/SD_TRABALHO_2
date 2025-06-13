@@ -69,12 +69,140 @@ ipcMain.handle('start-server', () => {
     return startProcess('server', 'Servidor', ['run']);
 });
 
+ipcMain.handle('start-server-instance', (event, serverId) => {
+    return startProcess(`server-${serverId}`, 'Servidor', ['run'], serverId);
+});
+
 ipcMain.handle('start-aggregator', (event, aggregatorId) => {
     return startProcess(`aggregator-${aggregatorId}`, 'Agregador', ['run'], aggregatorId);
 });
 
 ipcMain.handle('start-wavy', (event, wavyId) => {
     return startProcess(`wavy-${wavyId}`, 'Wavy', ['run'], wavyId);
+});
+
+ipcMain.handle('start-regional-components', async (event, regionCode) => {
+    const results = [];    // Regional mapping based on the actual config files
+    // Wavys can connect to multiple aggregators based on ocean/region coverage
+    const regionMappings = {
+        'EU': {
+            serverId: 'EU-S',
+            aggregators: ['EU-Agr01', 'EU-Agr02', 'EU-Agr03', 'EU-Agr04'],
+            wavys: [
+                // Atlantic coastal/open (EU coverage)
+                'Wavy01', 'Wavy02', 'Wavy06',
+                // Arctic (EU coverage) 
+                'Wavy24'
+            ]
+        },
+        'NA': {
+            serverId: 'NA-S',
+            aggregators: ['NA-Agr01', 'NA-Agr02', 'NA-Agr03', 'NA-Agr04', 'NA-Agr05'],
+            wavys: [
+                // Atlantic coastal (North America East Coast)
+                'Wavy05',
+                // Pacific coastal (North America West Coast)
+                'Wavy13',
+                // Arctic (North America Arctic)
+                'Wavy23',
+                // Additional Atlantic/Pacific coverage
+                'Wavy01', 'Wavy09', 'Wavy30'
+            ]
+        },
+        'SA': {
+            serverId: 'SA-S',
+            aggregators: ['SA-Agr01', 'SA-Agr02', 'SA-Agr03', 'SA-Agr04'],
+            wavys: [
+                // Atlantic coastal (South America East Coast)
+                'Wavy08',
+                // Pacific coastal (South America West Coast)  
+                'Wavy14',
+                // Atlantic/Pacific open waters near SA
+                'Wavy03', 'Wavy04', 'Wavy11', 'Wavy12'
+            ]
+        },
+        'AF': {
+            serverId: 'AF-S',
+            aggregators: ['AF-Agr01', 'AF-Agr02', 'AF-Agr03', 'AF-Agr04'],
+            wavys: [
+                // Atlantic coastal (Africa West Coast)
+                'Wavy07',
+                // Indian coastal (Africa East Coast)
+                'Wavy21',
+                // Atlantic/Indian open waters near Africa
+                'Wavy03', 'Wavy04', 'Wavy17', 'Wavy18'
+            ]
+        },
+        'AS': {
+            serverId: 'AS-S',
+            aggregators: ['AS-Agr01', 'AS-Agr02', 'AS-Agr03', 'AS-Agr04', 'AS-Agr05'],
+            wavys: [
+                // Pacific coastal (Asia East Coast)
+                'Wavy15',
+                // Indian coastal (Asia Southwest Coast)
+                'Wavy20',
+                // Arctic (Asia Arctic)
+                'Wavy25',
+                // Pacific/Indian open waters near Asia
+                'Wavy10', 'Wavy17', 'Wavy19', 'Wavy31', 'Wavy32'
+            ]
+        },
+        'OC': {
+            serverId: 'OC-S',
+            aggregators: ['OC-Agr01', 'OC-Agr02', 'OC-Agr03', 'OC-Agr04', 'OC-Agr05'],
+            wavys: [
+                // Pacific coastal (Oceania East Coast)
+                'Wavy16',
+                // Indian coastal (Oceania West Coast)
+                'Wavy22',
+                // Pacific/Indian/Southern open waters near Oceania
+                'Wavy12', 'Wavy19', 'Wavy27', 'Wavy28'
+            ]
+        },
+        'AQ': {
+            serverId: 'AQ-S',
+            aggregators: ['AQ-Agr01'],
+            wavys: [
+                // Southern Ocean and Antarctica
+                'Wavy26', 'Wavy27', 'Wavy28', 'Wavy29'
+            ]
+        }
+    };
+
+    const regionConfig = regionMappings[regionCode];
+    if (!regionConfig) {
+        return { success: false, message: `Invalid region code: ${regionCode}` };
+    }    try {
+        // Start a dedicated server instance for this region
+        const serverProcessId = `server-${regionConfig.serverId}`;
+        const serverResult = startProcess(serverProcessId, 'Servidor', ['run'], regionConfig.serverId);
+        results.push({ type: 'server', id: regionConfig.serverId, processId: serverProcessId, ...serverResult });
+        
+        // Wait for server to initialize before starting other components
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // Start aggregators
+        for (const aggregatorId of regionConfig.aggregators) {
+            const result = startProcess(`aggregator-${aggregatorId}`, 'Agregador', ['run'], aggregatorId);
+            results.push({ type: 'aggregator', id: aggregatorId, ...result });
+            
+            // Small delay between starts
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+
+        // Start wavy sensors
+        for (const wavyId of regionConfig.wavys) {
+            const result = startProcess(`wavy-${wavyId}`, 'Wavy', ['run'], wavyId);
+            results.push({ type: 'wavy', id: wavyId, ...result });
+            
+            // Small delay between starts
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        return { success: true, results, regionCode };
+    } catch (error) {
+        return { success: false, message: `Failed to start regional components: ${error.message}` };
+    }
 });
 
 ipcMain.handle('stop-process', (event, processId) => {
