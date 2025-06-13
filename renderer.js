@@ -88,15 +88,23 @@ function setupEventListeners() {
         runningProcesses.add('server');
         updateComponentStatus('server', true);
         addToOutput('server', '[MANAGER] Server auto-started on application launch.\n');
-        selectComponent('server');
-          // Show welcome message with auto-start info
+        selectComponent('server');          // Show welcome message with auto-start info
         const terminalContent = document.getElementById('terminal-content');
         terminalContent.innerHTML = `
             <div class="welcome-message">
                 🚀 <strong>Server Auto-Started!</strong> 🚀<br><br>
                 <span class="success-text">✅ Servidor is now running automatically</span><br><br>
-                You can now start Aggregators and Wavy components.<br>
-                Use Quick Start buttons for easy continent setup!<br><br>
+                <span class="info-text">Next Steps:</span><br>
+                • Use <strong>Regional Quick Start</strong> to deploy complete regional systems<br>
+                • Or manually start Aggregators and Wavy components<br><br>                <span class="info-text">Regional Quick Start Options:</span><br>
+                • <strong>Europe (EU)</strong> - 4 aggregators, 4 wavy sensors (Atlantic/Arctic coverage)<br>
+                • <strong>North America (NA)</strong> - 5 aggregators, 7 wavy sensors (Atlantic/Pacific/Arctic coverage)<br>
+                • <strong>South America (SA)</strong> - 4 aggregators, 6 wavy sensors (Atlantic/Pacific coverage)<br>
+                • <strong>Africa (AF)</strong> - 4 aggregators, 6 wavy sensors (Atlantic/Indian coverage)<br>
+                • <strong>Asia (AS)</strong> - 5 aggregators, 8 wavy sensors (Pacific/Indian/Arctic coverage)<br>
+                • <strong>Oceania (OC)</strong> - 5 aggregators, 6 wavy sensors (Pacific/Indian/Southern coverage)<br>
+                • <strong>Antarctica (AQ)</strong> - 1 aggregator, 4 wavy sensors (Southern Ocean coverage)<br>
+                • <strong>🌍 Start All Regions</strong> - Deploy globally (All 32 wavy sensors)<br><br>
                 <span style="color: #ffaa00;">Click on "server" in the sidebar to view server output.</span>
             </div>
         `;
@@ -182,78 +190,102 @@ async function stopAllProcesses() {
 }
 
 async function startAllComponents() {
-    // Start server if not already running
+    // Check if server is running
     if (!runningProcesses.has('server')) {
-        await startServer();
-        // Wait for server to initialize
-        await new Promise(resolve => setTimeout(resolve, 3000));
-    } else {
-        console.log('Server already running, skipping...');
-    }    // Start key maritime aggregators from different regions
-    const maritimeAggregators = [
-        'NA-Agr01', 'NA-Agr03', 'EU-Agr01', 
-        'AS-Agr01', 'OC-Agr01', 'SA-Agr01', 
-        'AF-Agr03', 'AQ-Agr01'
-    ];
-    
-    for (const aggregatorId of maritimeAggregators) {
-        document.getElementById('aggregator-id').value = aggregatorId;
-        await startAggregator();
-        await new Promise(resolve => setTimeout(resolve, 1500));
-    }
-
-    // Wait for aggregators to initialize
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Start all Wavy sensors (Wavy01-Wavy26)
-    const allWavyIds = [
-        'Wavy01', 'Wavy02', 'Wavy03', 'Wavy04', 'Wavy05', 'Wavy06',
-        'Wavy07', 'Wavy08', 'Wavy09', 'Wavy10', 'Wavy11', 'Wavy12',
-        'Wavy13', 'Wavy14', 'Wavy15', 'Wavy16', 'Wavy17', 'Wavy18',
-        'Wavy19', 'Wavy20', 'Wavy21', 'Wavy22', 'Wavy23', 'Wavy24',
-        'Wavy25', 'Wavy26'
-    ];
-
-    for (const wavyId of allWavyIds) {
-        document.getElementById('wavy-id').value = wavyId;
-        await startWavy();
-        await new Promise(resolve => setTimeout(resolve, 800)); // Shorter delay for many sensors
-    }
-
-    // Show completion message
-    addToOutput('server', '\n[MANAGER] Full system startup completed! All 26 Wavy sensors and 8 maritime aggregators are now active.\n');
-}
-
-async function quickStartWavySet(setNumber) {
-    // Define Wavy sets for different ocean regions
-    const wavySets = {
-        1: ['Wavy01', 'Wavy02', 'Wavy03'], // Atlantic Ocean
-        2: ['Wavy04', 'Wavy05', 'Wavy06'], // North Atlantic
-        3: ['Wavy07', 'Wavy08', 'Wavy09'], // Pacific Ocean 
-        4: ['Wavy10', 'Wavy11', 'Wavy12'], // South Pacific
-        5: ['Wavy13', 'Wavy14', 'Wavy15'], // Indian Ocean
-        6: ['Wavy16', 'Wavy17', 'Wavy18'], // Arctic Ocean
-        7: ['Wavy19', 'Wavy20', 'Wavy21'], // Southern Ocean
-        8: ['Wavy22', 'Wavy23', 'Wavy24'], // Mediterranean/Caribbean
-        9: ['Wavy25', 'Wavy26']            // Antarctic Waters
-    };
-
-    const wavyIds = wavySets[setNumber];
-    if (!wavyIds) {
-        alert('Invalid Wavy set number');
+        addToOutput('server', '[MANAGER] Server not running. Please start the server first.\n');
+        alert('Server must be running before starting all components. The server should auto-start when the application launches.');
         return;
     }
 
-    // Start the Wavys in sequence
-    for (let i = 0; i < wavyIds.length; i++) {
-        document.getElementById('wavy-id').value = wavyIds[i];
-        await startWavy();
+    // Use the new regional approach - start all regions
+    await startAllRegions();
+}
+
+async function quickStartRegion(regionCode) {
+    const regionNames = {
+        'EU': 'Europe',
+        'NA': 'North America', 
+        'SA': 'South America',
+        'AF': 'Africa',
+        'AS': 'Asia',
+        'OC': 'Oceania',
+        'AQ': 'Antarctica'
+    };
+
+    const regionName = regionNames[regionCode] || regionCode;
+    
+    addToOutput('server', `\n[MANAGER] Starting regional deployment for ${regionName} (${regionCode})...\n`);
+    
+    try {
+        const result = await ipcRenderer.invoke('start-regional-components', regionCode);
         
-        // Small delay between starts
-        if (i < wavyIds.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+        if (result.success) {
+            // Update UI for started components
+            result.results.forEach(componentResult => {
+                if (componentResult.success) {
+                    const processId = componentResult.type === 'server' ? 'server' : 
+                                    componentResult.type === 'aggregator' ? `aggregator-${componentResult.id}` :
+                                    `wavy-${componentResult.id}`;
+                    
+                    runningProcesses.add(processId);
+                    
+                    if (componentResult.type === 'aggregator') {
+                        addAggregatorToList(componentResult.id);
+                    } else if (componentResult.type === 'wavy') {
+                        addWavyToList(componentResult.id);
+                    }
+                    
+                    updateComponentStatus(processId, true);
+                }
+            });
+            
+            // Show summary
+            const successCount = result.results.filter(r => r.success).length;
+            const totalCount = result.results.length;
+            
+            addToOutput('server', 
+                `[MANAGER] Regional deployment completed for ${regionName}!\n` +
+                `[MANAGER] Successfully started ${successCount}/${totalCount} components\n` +
+                `[MANAGER] • Server: ${regionCode}-S\n` +
+                `[MANAGER] • Aggregators: ${result.results.filter(r => r.type === 'aggregator' && r.success).map(r => r.id).join(', ')}\n` +
+                `[MANAGER] • Wavy Sensors: ${result.results.filter(r => r.type === 'wavy' && r.success).map(r => r.id).join(', ')}\n\n`);
+                
+            // Auto-select server to show output
+            selectComponent('server');
+        } else {
+            addToOutput('server', `[ERROR] Failed to start regional components: ${result.message}\n`);
+            alert(`Failed to start regional components for ${regionName}: ${result.message}`);
         }
-    }    addToOutput('server', `\n[MANAGER] Quick Start: Ocean monitoring set ${setNumber} deployed (${wavyIds.join(', ')}).\n`);
+    } catch (error) {
+        addToOutput('server', `[ERROR] Regional deployment failed: ${error.message}\n`);
+        alert(`Regional deployment failed: ${error.message}`);
+    }
+}
+
+async function startAllRegions() {
+    const regions = ['EU', 'NA', 'SA', 'AF', 'AS', 'OC', 'AQ'];
+    
+    addToOutput('server', '\n[MANAGER] ========================================\n');
+    addToOutput('server', '[MANAGER] 🌍 GLOBAL DEPLOYMENT INITIATED 🌍\n');
+    addToOutput('server', '[MANAGER] ========================================\n\n');
+    
+    for (let i = 0; i < regions.length; i++) {
+        const region = regions[i];
+        addToOutput('server', `[MANAGER] Starting region ${i + 1}/7: ${region}...\n`);
+        
+        await quickStartRegion(region);
+        
+        // Add delay between regions to avoid overwhelming the system
+        if (i < regions.length - 1) {
+            addToOutput('server', '[MANAGER] Waiting before starting next region...\n\n');
+            await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+    }
+    
+    addToOutput('server', '\n[MANAGER] ========================================\n');
+    addToOutput('server', '[MANAGER] 🎉 GLOBAL DEPLOYMENT COMPLETED! 🎉\n');
+    addToOutput('server', '[MANAGER] All regional systems are now active.\n');
+    addToOutput('server', '[MANAGER] ========================================\n\n');
 }
 
 function addAggregatorToList(aggregatorId) {
