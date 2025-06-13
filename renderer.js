@@ -1046,10 +1046,8 @@ async function createAggregator(event) {
         longitude: parseFloat(document.getElementById('aggr-longitude').value),
         dataTypes: Array.from(document.querySelectorAll('#create-aggregator-form .checkbox-group input:checked'))
                         .map(cb => cb.value)
-    };
-
-    // Validation
-    if (!formData.id || !formData.region || !formData.ocean || !formData.areaType) {
+    };    // Validation - ID is now optional
+    if (!formData.region || !formData.ocean || !formData.areaType) {
         alert('Please fill in all required fields.');
         return;
     }
@@ -1062,17 +1060,18 @@ async function createAggregator(event) {
     if (formData.dataTypes.length === 0) {
         alert('Please select at least one data type.');
         return;
-    }
-
-    try {
+    }    try {
         const result = await ipcRenderer.invoke('create-aggregator', formData);
         if (result.success) {
             hideCreateAggregatorForm();
             
+            // Use the generated ID if available, otherwise use the form ID
+            const finalId = result.generatedId || formData.id;
+            
             // Show success message in terminal
             const terminalContent = document.getElementById('terminal-content');
             terminalContent.innerHTML += `
-                <div class="success-text">[MANAGER] Successfully created aggregator ${formData.id}</div>
+                <div class="success-text">[MANAGER] Successfully created aggregator ${finalId}</div>
                 <div class="info-text">- Region: ${formData.region}</div>
                 <div class="info-text">- Ocean: ${formData.ocean}</div>
                 <div class="info-text">- Location: ${formData.latitude}, ${formData.longitude}</div>
@@ -1081,9 +1080,9 @@ async function createAggregator(event) {
             `;
             terminalContent.scrollTop = terminalContent.scrollHeight;
             
-            // Pre-fill the aggregator ID input
+            // Pre-fill the aggregator ID input with the final ID
             setTimeout(() => {
-                document.getElementById('aggregator-id').value = formData.id;
+                document.getElementById('aggregator-id').value = finalId;
             }, 500);
         } else {
             alert(`Failed to create aggregator: ${result.message}`);
@@ -1105,10 +1104,8 @@ async function createWavy(event) {
         regionCoverage: document.getElementById('wavy-region-coverage').value.trim(),
         dataInterval: parseInt(document.getElementById('wavy-data-interval').value),
         status: parseInt(document.getElementById('wavy-status').value)
-    };
-
-    // Validation
-    if (!formData.id || !formData.ocean || !formData.areaType || !formData.regionCoverage) {
+    };    // Validation - ID is now optional
+    if (!formData.ocean || !formData.areaType || !formData.regionCoverage) {
         alert('Please fill in all required fields.');
         return;
     }
@@ -1121,17 +1118,18 @@ async function createWavy(event) {
     if (isNaN(formData.dataInterval) || formData.dataInterval < 1000) {
         alert('Data interval must be at least 1000 milliseconds.');
         return;
-    }
-
-    try {
+    }    try {
         const result = await ipcRenderer.invoke('create-wavy', formData);
         if (result.success) {
             hideCreateWavyForm();
             
+            // Use the generated ID if available, otherwise use the form ID
+            const finalId = result.generatedId || formData.id;
+            
             // Show success message in terminal
             const terminalContent = document.getElementById('terminal-content');
             terminalContent.innerHTML += `
-                <div class="success-text">[MANAGER] Successfully created wavy sensor ${formData.id}</div>
+                <div class="success-text">[MANAGER] Successfully created wavy sensor ${finalId}</div>
                 <div class="info-text">- Ocean: ${formData.ocean}</div>
                 <div class="info-text">- Area Type: ${formData.areaType}</div>
                 <div class="info-text">- Location: ${formData.latitude}, ${formData.longitude}</div>
@@ -1141,9 +1139,9 @@ async function createWavy(event) {
             `;
             terminalContent.scrollTop = terminalContent.scrollHeight;
             
-            // Pre-fill the wavy ID input
+            // Pre-fill the wavy ID input with the final ID
             setTimeout(() => {
-                document.getElementById('wavy-id').value = formData.id;
+                document.getElementById('wavy-id').value = finalId;
             }, 500);
         } else {
             alert(`Failed to create wavy: ${result.message}`);

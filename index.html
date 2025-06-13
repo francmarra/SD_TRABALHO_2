@@ -152,10 +152,9 @@
                 <button class="close-btn" onclick="hideCreateAggregatorForm()">×</button>
             </div>
             <div class="modal-body">
-                <form id="create-aggregator-form" onsubmit="createAggregator(event)">
-                    <div class="form-group">
-                        <label for="aggr-id">Aggregator ID:</label>
-                        <input type="text" id="aggr-id" placeholder="e.g., EU-Agr05, NA-Agr06" required />
+                <form id="create-aggregator-form" onsubmit="createAggregator(event)">                    <div class="form-group">
+                        <label for="aggr-id">Aggregator ID (optional - auto-generated if empty):</label>
+                        <input type="text" id="aggr-id" placeholder="Leave empty for auto-generation (e.g., EU-Agr05, NA-Agr06)" />
                     </div>
                     <div class="form-group">
                         <label for="aggr-region">Region:</label>
@@ -230,10 +229,9 @@
                 <button class="close-btn" onclick="hideCreateWavyForm()">×</button>
             </div>
             <div class="modal-body">
-                <form id="create-wavy-form" onsubmit="createWavy(event)">
-                    <div class="form-group">
-                        <label for="wavy-id-create">Wavy ID:</label>
-                        <input type="text" id="wavy-id-create" placeholder="e.g., Wavy33, Wavy34" required />
+                <form id="create-wavy-form" onsubmit="createWavy(event)">                    <div class="form-group">
+                        <label for="wavy-id-create">Wavy ID (optional - auto-generated if empty):</label>
+                        <input type="text" id="wavy-id-create" placeholder="Leave empty for auto-generation (e.g., Wavy33, Wavy34)" />
                     </div>
                     <div class="form-row">
                         <div class="form-group">
