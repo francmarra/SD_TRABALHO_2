@@ -46,49 +46,53 @@ namespace Shared.MongoDB
         }        public async Task InsertWavyMessageAsync(WavyMessage message)
         {
             try
-            {
-                var document = new BsonDocument
+            {                var document = new BsonDocument
                 {
                     ["wavy_id"] = message.WavyId,
-                    ["agregador_id"] = message.AgregadorId,
                     ["aggregator_id"] = message.AggregatorId,
                     ["continent"] = message.Continent,
                     ["continent_code"] = message.ContinentCode,
                     ["server_id"] = message.ServerId,
                     ["timestamp"] = message.Timestamp,
                     ["received_at"] = DateTime.UtcNow,
-                    ["temperature"] = message.Temperature,
-                    ["humidity"] = message.Humidity,
-                    ["co2"] = message.Co2
+                    
+                    // Ocean Sensor Data
+                    ["sea_surface_temperature_celsius"] = message.SeaSurfaceTemperatureCelsius,
+                    ["wind_speed_ms"] = message.WindSpeedMs,
+                    ["wind_direction_degrees"] = message.WindDirectionDegrees,
+                    ["sea_level_meters"] = message.SeaLevelMeters,
+                    ["current_speed_ms"] = message.CurrentSpeedMs,
+                    ["current_direction_degrees"] = message.CurrentDirectionDegrees,
+                    ["salinity_psu"] = message.SalinityPsu,
+                    ["chlorophyll_mg_m3"] = message.ChlorophyllMgM3,
+                    ["wave_height_meters"] = message.WaveHeightMeters,
+                    ["wave_direction_degrees"] = message.WaveDirectionDegrees,
+                    ["acoustic_level_db"] = message.AcousticLevelDb,
+                    ["turbidity_ntu"] = message.TurbidityNtu,
+                    ["precipitation_rate_mm_h"] = message.PrecipitationRateMmH,
+                    ["surface_pressure_hpa"] = message.SurfacePressureHpa,
+                    ["temperature_gradient_c_km"] = message.TemperatureGradientCKm,
+                    
+                    // Create comprehensive sensors array
+                    ["sensors"] = new BsonArray(new[]
+                    {
+                        new BsonDocument { ["type"] = "sea_surface_temperature", ["value"] = message.SeaSurfaceTemperatureCelsius, ["unit"] = "celsius" },
+                        new BsonDocument { ["type"] = "wind_speed", ["value"] = message.WindSpeedMs, ["unit"] = "m/s" },
+                        new BsonDocument { ["type"] = "wind_direction", ["value"] = message.WindDirectionDegrees, ["unit"] = "degrees" },
+                        new BsonDocument { ["type"] = "sea_level", ["value"] = message.SeaLevelMeters, ["unit"] = "meters" },
+                        new BsonDocument { ["type"] = "current_speed", ["value"] = message.CurrentSpeedMs, ["unit"] = "m/s" },
+                        new BsonDocument { ["type"] = "current_direction", ["value"] = message.CurrentDirectionDegrees, ["unit"] = "degrees" },
+                        new BsonDocument { ["type"] = "salinity", ["value"] = message.SalinityPsu, ["unit"] = "psu" },
+                        new BsonDocument { ["type"] = "chlorophyll", ["value"] = message.ChlorophyllMgM3, ["unit"] = "mg/m3" },
+                        new BsonDocument { ["type"] = "wave_height", ["value"] = message.WaveHeightMeters, ["unit"] = "meters" },
+                        new BsonDocument { ["type"] = "wave_direction", ["value"] = message.WaveDirectionDegrees, ["unit"] = "degrees" },
+                        new BsonDocument { ["type"] = "acoustic_level", ["value"] = message.AcousticLevelDb, ["unit"] = "db" },
+                        new BsonDocument { ["type"] = "turbidity", ["value"] = message.TurbidityNtu, ["unit"] = "ntu" },
+                        new BsonDocument { ["type"] = "precipitation_rate", ["value"] = message.PrecipitationRateMmH, ["unit"] = "mm/h" },
+                        new BsonDocument { ["type"] = "surface_pressure", ["value"] = message.SurfacePressureHpa, ["unit"] = "hpa" },
+                        new BsonDocument { ["type"] = "temperature_gradient", ["value"] = message.TemperatureGradientCKm, ["unit"] = "c/km" }
+                    })
                 };
-
-                // Handle legacy sensors array if present
-                if (message.Sensors != null && message.Sensors.Length > 0)
-                {
-                    document["sensors"] = new BsonArray(message.Sensors.Select(s => new BsonDocument
-                    {
-                        ["type"] = s.Type,
-                        ["value"] = s.Value
-                    }));
-                }
-                else
-                {
-                    // Create sensors array from individual sensor values
-                    var sensors = new List<BsonDocument>();
-                    if (message.Temperature != 0)
-                    {
-                        sensors.Add(new BsonDocument { ["type"] = "temperature", ["value"] = message.Temperature });
-                    }
-                    if (message.Humidity != 0)
-                    {
-                        sensors.Add(new BsonDocument { ["type"] = "humidity", ["value"] = message.Humidity });
-                    }
-                    if (message.Co2 != 0)
-                    {
-                        sensors.Add(new BsonDocument { ["type"] = "co2", ["value"] = message.Co2 });
-                    }
-                    document["sensors"] = new BsonArray(sensors);
-                }
 
                 await _wavyMessagesCollection.InsertOneAsync(document);
                 Console.WriteLine($"[MongoDB] Wavy message from {message.WavyId} inserted successfully");
@@ -107,8 +111,7 @@ namespace Shared.MongoDB
                     ["agregador_id"] = data.AgregadorId,
                     ["timestamp"] = data.Timestamp,
                     ["received_at"] = DateTime.UtcNow,
-                    ["message_count"] = data.Messages.Count,
-                    ["messages"] = new BsonArray(data.Messages.Select(m => new BsonDocument
+                    ["message_count"] = data.Messages.Count,                    ["messages"] = new BsonArray(data.Messages.Select(m => new BsonDocument
                     {
                         ["wavy_id"] = m.WavyId,
                         ["aggregator_id"] = m.AggregatorId,
@@ -116,21 +119,42 @@ namespace Shared.MongoDB
                         ["continent_code"] = m.ContinentCode,
                         ["server_id"] = m.ServerId,
                         ["timestamp"] = m.Timestamp,
-                        ["temperature"] = m.Temperature,
-                        ["humidity"] = m.Humidity,
-                        ["co2"] = m.Co2,
-                        ["sensors"] = m.Sensors != null && m.Sensors.Length > 0 
-                            ? new BsonArray(m.Sensors.Select(s => new BsonDocument
-                            {
-                                ["type"] = s.Type,
-                                ["value"] = s.Value
-                            }))
-                            : new BsonArray(new[]
-                            {
-                                new BsonDocument { ["type"] = "temperature", ["value"] = m.Temperature },
-                                new BsonDocument { ["type"] = "humidity", ["value"] = m.Humidity },
-                                new BsonDocument { ["type"] = "co2", ["value"] = m.Co2 }
-                            }.Where(s => s["value"].AsDouble != 0))
+                        
+                        // Ocean Sensor Data
+                        ["sea_surface_temperature_celsius"] = m.SeaSurfaceTemperatureCelsius,
+                        ["wind_speed_ms"] = m.WindSpeedMs,
+                        ["wind_direction_degrees"] = m.WindDirectionDegrees,
+                        ["sea_level_meters"] = m.SeaLevelMeters,
+                        ["current_speed_ms"] = m.CurrentSpeedMs,
+                        ["current_direction_degrees"] = m.CurrentDirectionDegrees,
+                        ["salinity_psu"] = m.SalinityPsu,
+                        ["chlorophyll_mg_m3"] = m.ChlorophyllMgM3,
+                        ["wave_height_meters"] = m.WaveHeightMeters,
+                        ["wave_direction_degrees"] = m.WaveDirectionDegrees,
+                        ["acoustic_level_db"] = m.AcousticLevelDb,
+                        ["turbidity_ntu"] = m.TurbidityNtu,
+                        ["precipitation_rate_mm_h"] = m.PrecipitationRateMmH,
+                        ["surface_pressure_hpa"] = m.SurfacePressureHpa,
+                        ["temperature_gradient_c_km"] = m.TemperatureGradientCKm,
+                        
+                        ["sensors"] = new BsonArray(new[]
+                        {
+                            new BsonDocument { ["type"] = "sea_surface_temperature", ["value"] = m.SeaSurfaceTemperatureCelsius, ["unit"] = "celsius" },
+                            new BsonDocument { ["type"] = "wind_speed", ["value"] = m.WindSpeedMs, ["unit"] = "m/s" },
+                            new BsonDocument { ["type"] = "wind_direction", ["value"] = m.WindDirectionDegrees, ["unit"] = "degrees" },
+                            new BsonDocument { ["type"] = "sea_level", ["value"] = m.SeaLevelMeters, ["unit"] = "meters" },
+                            new BsonDocument { ["type"] = "current_speed", ["value"] = m.CurrentSpeedMs, ["unit"] = "m/s" },
+                            new BsonDocument { ["type"] = "current_direction", ["value"] = m.CurrentDirectionDegrees, ["unit"] = "degrees" },
+                            new BsonDocument { ["type"] = "salinity", ["value"] = m.SalinityPsu, ["unit"] = "psu" },
+                            new BsonDocument { ["type"] = "chlorophyll", ["value"] = m.ChlorophyllMgM3, ["unit"] = "mg/m3" },
+                            new BsonDocument { ["type"] = "wave_height", ["value"] = m.WaveHeightMeters, ["unit"] = "meters" },
+                            new BsonDocument { ["type"] = "wave_direction", ["value"] = m.WaveDirectionDegrees, ["unit"] = "degrees" },
+                            new BsonDocument { ["type"] = "acoustic_level", ["value"] = m.AcousticLevelDb, ["unit"] = "db" },
+                            new BsonDocument { ["type"] = "turbidity", ["value"] = m.TurbidityNtu, ["unit"] = "ntu" },
+                            new BsonDocument { ["type"] = "precipitation_rate", ["value"] = m.PrecipitationRateMmH, ["unit"] = "mm/h" },
+                            new BsonDocument { ["type"] = "surface_pressure", ["value"] = m.SurfacePressureHpa, ["unit"] = "hpa" },
+                            new BsonDocument { ["type"] = "temperature_gradient", ["value"] = m.TemperatureGradientCKm, ["unit"] = "c/km" }
+                        })
                     }))
                 };
 

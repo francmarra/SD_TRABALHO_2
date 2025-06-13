@@ -216,17 +216,15 @@ class Program
                 };
             }
 
-            // Add continent and aggregator information to the message
-            wavyMessage.Continent = continentName;
+            // Add continent and aggregator information to the message            wavyMessage.Continent = continentName;
             wavyMessage.ContinentCode = continentCode;
             wavyMessage.AggregatorId = aggregatorID;
             wavyMessage.ServerId = serverId;
-            wavyMessage.AgregadorId = aggregatorID; // Legacy support
 
             // Add to processing queue
             dataQueue.Enqueue(wavyMessage);
 
-            Console.WriteLine($"📊 [{aggregatorID}] Data received from {wavyId}: T={wavyMessage.Temperature:F1}°C, H={wavyMessage.Humidity:F1}%, CO2={wavyMessage.Co2}ppm");
+            Console.WriteLine($"📊 [{aggregatorID}] Ocean data received from {wavyId}: SST={wavyMessage.SeaSurfaceTemperatureCelsius:F1}°C, Wind={wavyMessage.WindSpeedMs:F1}m/s, Waves={wavyMessage.WaveHeightMeters:F1}m");
             
             return new RpcResponse
             {

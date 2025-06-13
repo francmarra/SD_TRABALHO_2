@@ -159,9 +159,7 @@ class Program
             Console.WriteLine($"[{wavyID}] Erro durante handshake: {ex.Message}");
             return false;
         }
-    }
-
-    static async Task EnviarDadosPeriodicamente()
+    }    static async Task EnviarDadosPeriodicamente()
     {
         var rnd = new Random();
         int segundos = 0;
@@ -170,40 +168,16 @@ class Program
         {            
             try
             {
-                double temperatura = Math.Round(15 + rnd.NextDouble() * 10, 2);
+                // Generate comprehensive ocean sensor data
+                var wavyMessage = GenerateOceanSensorData(rnd);
                 
-                WavyMessage wavyMessage;
-                if (segundos % 2 == 0)
-                {
-                    double umidade = rnd.Next(0, 100);
-                    wavyMessage = new WavyMessage
-                    {
-                        WavyId = wavyID,
-                        Continent = continentName,       // Uses static field loaded in Main
-                        ContinentCode = continentCode,   // Uses static field loaded in Main
-                        AggregatorId = aggregatorId,     // Uses static field loaded in Main
-                        ServerId = serverId,             // Uses static field loaded in Main
-                        Temperature = temperatura,
-                        Humidity = umidade,
-                        Co2 = 0, 
-                        Timestamp = DateTime.Now.ToString("o")
-                    };
-                }
-                else
-                {
-                    wavyMessage = new WavyMessage
-                    {
-                        WavyId = wavyID,
-                        Continent = continentName,       // Uses static field loaded in Main
-                        ContinentCode = continentCode,   // Uses static field loaded in Main
-                        AggregatorId = aggregatorId,     // Uses static field loaded in Main
-                        ServerId = serverId,             // Uses static field loaded in Main
-                        Temperature = temperatura,
-                        Humidity = 0, 
-                        Co2 = 0, 
-                        Timestamp = DateTime.Now.ToString("o")
-                    };
-                }
+                // Set metadata fields
+                wavyMessage.WavyId = wavyID;
+                wavyMessage.Continent = continentName;
+                wavyMessage.ContinentCode = continentCode;
+                wavyMessage.AggregatorId = aggregatorId;
+                wavyMessage.ServerId = serverId;
+                wavyMessage.Timestamp = DateTime.UtcNow.ToString("o");
 
                 var request = new RpcRequest
                 {
@@ -268,8 +242,77 @@ class Program
                 encerrarExecucao = true;
                 break;
             }
-        }
+        }    }
+
+    /// <summary>
+    /// Generates comprehensive ocean sensor data simulating real-world marine monitoring buoy readings.
+    /// This method creates realistic data for 12 different types of ocean sensors commonly used in
+    /// oceanographic research and marine monitoring systems.
+    /// </summary>
+    /// <param name="rnd">Random number generator for data variation</param>
+    /// <returns>WavyMessage containing comprehensive ocean sensor data</returns>
+    static WavyMessage GenerateOceanSensorData(Random rnd)
+    {
+        var message = new WavyMessage();
+        
+        // 1. Sea Surface Temperature (SST) - Realistic oceanic range
+        // Tropical: 26-30°C, Temperate: 15-25°C, Polar: -2-10°C
+        message.SeaSurfaceTemperatureCelsius = Math.Round(GetRandomInRange(rnd, -2.0, 30.0), 2);
+        
+        // 2. Wind Speed and Direction
+        // Surface winds typically 0-40 m/s (0-144 km/h)
+        message.WindSpeedMs = Math.Round(GetRandomInRange(rnd, 0.0, 40.0), 1);
+        message.WindDirectionDegrees = Math.Round(GetRandomInRange(rnd, 0.0, 360.0), 0);
+        
+        // 3. Sea Level / Tide Height
+        // Typical tidal range: -2m to +2m relative to mean sea level
+        message.SeaLevelMeters = Math.Round(GetRandomInRange(rnd, -2.0, 2.0), 3);
+        
+        // 4. Ocean Surface Currents
+        // Surface currents typically 0-2 m/s
+        message.CurrentSpeedMs = Math.Round(GetRandomInRange(rnd, 0.0, 2.0), 2);
+        message.CurrentDirectionDegrees = Math.Round(GetRandomInRange(rnd, 0.0, 360.0), 0);
+        
+        // 5. Salinity
+        // Ocean salinity typically 32-37 PSU, with 35 PSU being average
+        message.SalinityPsu = Math.Round(GetRandomInRange(rnd, 32.0, 37.0), 1);
+        
+        // 6. Chlorophyll Concentration
+        // Open ocean: 0.1-1 mg/m³, Coastal/upwelling: 1-10 mg/m³
+        message.ChlorophyllMgM3 = Math.Round(GetRandomInRange(rnd, 0.1, 10.0), 2);
+        
+        // 7. Wave Height and Direction
+        // Significant wave height typically 0-15m in extreme conditions
+        message.WaveHeightMeters = Math.Round(GetRandomInRange(rnd, 0.1, 8.0), 2);
+        message.WaveDirectionDegrees = Math.Round(GetRandomInRange(rnd, 0.0, 360.0), 0);
+        
+        // 8. Acoustic Activity
+        // Underwater sound levels: 50-180 dB re 1 μPa
+        message.AcousticLevelDb = Math.Round(GetRandomInRange(rnd, 50.0, 180.0), 1);
+        
+        // 9. Turbidity / Water Clarity
+        // Clear ocean: 0.1-1 NTU, Coastal/turbid: 1-100+ NTU
+        message.TurbidityNtu = Math.Round(GetRandomInRange(rnd, 0.1, 50.0), 1);
+        
+        // 10. Rainfall / Precipitation Rate
+        // 0-100 mm/h (extreme rainfall can exceed this)
+        message.PrecipitationRateMmH = Math.Round(GetRandomInRange(rnd, 0.0, 25.0), 1);
+        
+        // 11. Pressure at Sea Surface
+        // Sea level pressure: 980-1040 hPa typically
+        message.SurfacePressureHpa = Math.Round(GetRandomInRange(rnd, 980.0, 1040.0), 1);
+          // 12. Temperature Gradient (horizontal surface)
+        // Oceanic fronts can have gradients 0.1-5°C/km
+        message.TemperatureGradientCKm = Math.Round(GetRandomInRange(rnd, 0.0, 5.0), 2);
+        
+        return message;
     }
+    
+    static double GetRandomInRange(Random rnd, double min, double max)
+    {
+        return min + (rnd.NextDouble() * (max - min));
+    }
+    
     // Removed local helper methods: IsWavyConfiguredAsync, GetWavyStatusAsync, UpdateWavyStatusAsync, UpdateWavyLastSyncAsync.
     // Configuration and status are now handled via ConfigService and direct MongoDB interactions.
 }
