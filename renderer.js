@@ -1165,3 +1165,107 @@ document.addEventListener('click', (event) => {
         hideCreateWavyForm();
     }
 });
+
+// Dashboard functionality
+let dashboardServerRunning = false;
+let dashboardProcess = null;
+
+async function openDashboardTab() {
+    const modal = document.getElementById('dashboard-modal');
+    modal.style.display = 'flex';
+    
+    // Update dashboard status
+    const statusElement = document.getElementById('dashboard-server-status');
+    const textElement = document.getElementById('dashboard-server-text');
+    
+    statusElement.textContent = '⚡';
+    textElement.textContent = 'Starting Dashboard Server...';
+    
+    try {
+        // Start the dashboard server via IPC
+        const result = await ipcRenderer.invoke('start-dashboard-server');
+        
+        if (result.success) {
+            dashboardServerRunning = true;
+            dashboardProcess = result.processId;
+            statusElement.textContent = '✅';
+            textElement.textContent = 'Dashboard Server Running';
+            
+            // Wait a moment for server to be fully ready
+            setTimeout(() => {
+                const iframe = document.getElementById('dashboard-frame');
+                iframe.src = 'http://localhost:5001';
+            }, 2000);
+        } else {
+            statusElement.textContent = '❌';
+            textElement.textContent = `Error: ${result.error}`;
+            
+            // Show error message and instructions
+            const iframe = document.getElementById('dashboard-frame');
+            iframe.srcdoc = `
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+                        .error { background: #ffebee; border: 1px solid #f44336; border-radius: 5px; padding: 15px; margin: 10px 0; }
+                        .instructions { background: #e3f2fd; border: 1px solid #2196f3; border-radius: 5px; padding: 15px; margin: 10px 0; }
+                        code { background: #eeeeee; padding: 2px 5px; border-radius: 3px; }
+                    </style>
+                </head>
+                <body>
+                    <h2>⚠️ Dashboard Server Setup Required</h2>
+                    <div class="error">
+                        <strong>Error:</strong> ${result.error}
+                    </div>
+                    <div class="instructions">
+                        <h3>🔧 Quick Setup Instructions:</h3>
+                        <ol>
+                            <li><strong>Install Python:</strong> Download from <a href="https://python.org" target="_blank">python.org</a></li>
+                            <li><strong>Run setup script:</strong> <code>npm run setup-dashboard</code></li>
+                            <li><strong>Or install manually:</strong> <code>pip install -r requirements.txt</code></li>
+                            <li><strong>Try again:</strong> Click "🔄 Refresh" button above</li>
+                        </ol>
+                        <p><strong>💡 Alternative:</strong> You can also run <code>python dashboard_server.py</code> manually in a terminal, then click "🌐 Open in Browser".</p>
+                    </div>
+                </body>
+                </html>
+            `;
+        }
+    } catch (error) {
+        statusElement.textContent = '❌';
+        textElement.textContent = `Failed to start server: ${error.message}`;
+    }
+}
+
+function closeDashboardTab() {
+    const modal = document.getElementById('dashboard-modal');
+    modal.style.display = 'none';
+}
+
+function refreshDashboard() {
+    const iframe = document.getElementById('dashboard-frame');
+    if (iframe.src) {
+        iframe.src = iframe.src; // Reload the iframe
+    } else {
+        openDashboardTab(); // Restart the server if not running
+    }
+}
+
+function openDashboardExternal() {
+    // Open the dashboard in the user's default browser
+    require('electron').shell.openExternal('http://localhost:5001');
+}
+
+// Close dashboard modal when clicking outside of it
+document.addEventListener('click', (event) => {
+    const dashboardModal = document.getElementById('dashboard-modal');
+    if (event.target === dashboardModal) {
+        closeDashboardTab();
+    }
+    
+    // Existing map modal logic
+    const modal = document.getElementById('map-modal');
+    if (event.target === modal) {
+        closeMapTab();
+    }
+});

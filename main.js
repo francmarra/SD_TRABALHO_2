@@ -499,3 +499,121 @@ function stopProcess(processId) {
     }
     return { success: false, message: `Process ${processId} not found or already stopped` };
 }
+
+// Dashboard server management
+ipcMain.handle('start-dashboard-server', async (event) => {
+    try {
+        // Check if python is available
+        const pythonProcess = spawn('python', ['--version'], { stdio: 'pipe' });
+        
+        return new Promise((resolve, reject) => {
+            let pythonAvailable = false;
+            
+            pythonProcess.on('close', (code) => {
+                if (code === 0) {
+                    pythonAvailable = true;
+                } else {
+                    // Try python3 as well
+                    const python3Process = spawn('python3', ['--version'], { stdio: 'pipe' });
+                    python3Process.on('close', (python3Code) => {
+                        if (python3Code === 0) {
+                            pythonAvailable = true;
+                        }
+                        
+                        if (!pythonAvailable) {
+                            resolve({ 
+                                success: false, 
+                                error: 'Python not found. Please install Python 3.8+ and add it to your PATH.' 
+                            });
+                            return;
+                        }
+                        
+                        startPythonDashboard(resolve);
+                    });
+                    return;
+                }
+                
+                startPythonDashboard(resolve);
+            });
+            
+            pythonProcess.on('error', (error) => {
+                resolve({ 
+                    success: false, 
+                    error: 'Python not found. Please install Python 3.8+ and add it to your PATH.' 
+                });
+            });
+        });
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+function startPythonDashboard(resolve) {
+    try {
+        const dashboardProcess = spawn('python', ['dashboard_server.py'], {
+            cwd: __dirname,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            env: { ...process.env }
+        });
+        
+        const processId = 'dashboard-server';
+        processes.set(processId, dashboardProcess);
+        
+        let startupOutput = '';
+        
+        dashboardProcess.stdout.on('data', (data) => {
+            const output = data.toString();
+            startupOutput += output;
+            
+            if (mainWindow) {
+                mainWindow.webContents.send('process-output', processId, `[DASHBOARD] ${output}`);
+            }
+        });
+        
+        dashboardProcess.stderr.on('data', (data) => {
+            const output = data.toString();
+            
+            if (mainWindow) {
+                mainWindow.webContents.send('process-output', processId, `[DASHBOARD ERROR] ${output}`);
+            }
+            
+            // Check for common Python errors
+            if (output.includes('ModuleNotFoundError') || output.includes('ImportError')) {
+                resolve({ 
+                    success: false, 
+                    error: 'Missing Python packages. Please run: pip install -r requirements.txt' 
+                });
+                return;
+            }
+        });
+        
+        dashboardProcess.on('error', (error) => {
+            if (mainWindow) {
+                mainWindow.webContents.send('process-output', processId, `[DASHBOARD ERROR] ${error.message}\n`);
+            }
+            resolve({ success: false, error: error.message });
+        });
+        
+        dashboardProcess.on('close', (code) => {
+            if (mainWindow) {
+                mainWindow.webContents.send('process-output', processId, `[DASHBOARD] Process exited with code ${code}\n`);
+                mainWindow.webContents.send('process-closed', processId);
+            }
+            processes.delete(processId);
+        });
+        
+        // Wait a bit to see if the server starts successfully
+        setTimeout(() => {
+            if (!dashboardProcess.killed) {
+                resolve({ 
+                    success: true, 
+                    processId: processId,
+                    message: 'Dashboard server started successfully' 
+                });
+            }
+        }, 2000);
+        
+    } catch (error) {
+        resolve({ success: false, error: error.message });
+    }
+}
