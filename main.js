@@ -240,6 +240,20 @@ ipcMain.handle('create-aggregator', async (event, formData) => {
     try {
         const configPath = path.join(__dirname, 'configs', 'config_aggregator_subscriptions.csv');
         
+        // Insert into MongoDB first to get the generated ID
+        let finalId = formData.id;
+        let mongoResult = null;
+        try {
+            mongoResult = await insertIntoMongoDB('aggregator', formData);
+            if (mongoResult.generatedId) {
+                finalId = mongoResult.generatedId;
+                console.log(`Generated aggregator ID: ${finalId}`);
+            }
+        } catch (mongoError) {
+            console.error('MongoDB insertion failed:', mongoError);
+            return { success: false, message: `Failed to create aggregator: ${mongoError.message}` };
+        }
+        
         // Read existing config
         let configContent = '';
         if (fs.existsSync(configPath)) {
@@ -249,30 +263,25 @@ ipcMain.handle('create-aggregator', async (event, formData) => {
             configContent = 'AggregatorId,Region,Ocean,AreaType,Latitude,Longitude,SubscribedDataTypes\n';
         }
         
-        // Check if aggregator ID already exists
+        // Check if aggregator ID already exists in CSV
         const lines = configContent.split('\n');
         const existingIds = lines.slice(1).map(line => line.split(',')[0]).filter(id => id.trim());
         
-        if (existingIds.includes(formData.id)) {
-            return { success: false, message: `Aggregator ID ${formData.id} already exists` };
+        if (existingIds.includes(finalId)) {
+            return { success: false, message: `Aggregator ID ${finalId} already exists in CSV` };
         }
         
         // Create new aggregator entry
         const dataTypesString = `"${formData.dataTypes.join(',')}"`;
-        const newEntry = `${formData.id},${formData.region},${formData.ocean},${formData.areaType},${formData.latitude},${formData.longitude},${dataTypesString}\n`;
+        const newEntry = `${finalId},${formData.region},${formData.ocean},${formData.areaType},${formData.latitude},${formData.longitude},${dataTypesString}\n`;
           // Append to config file
         fs.appendFileSync(configPath, newEntry);
         
-        // Insert into MongoDB
-        try {
-            await insertIntoMongoDB('aggregator', formData);
-            console.log(`Successfully inserted aggregator ${formData.id} into MongoDB`);
-        } catch (mongoError) {
-            console.error('MongoDB insertion failed:', mongoError);
-            // Don't fail the entire operation if MongoDB insertion fails
-        }
-        
-        return { success: true, message: `Aggregator ${formData.id} created successfully` };
+        return { 
+            success: true, 
+            message: `Aggregator ${finalId} created successfully`,
+            generatedId: finalId
+        };
     } catch (error) {
         console.error('Error creating aggregator:', error);
         return { success: false, message: `Failed to create aggregator: ${error.message}` };
@@ -283,6 +292,20 @@ ipcMain.handle('create-wavy', async (event, formData) => {
     try {
         const configPath = path.join(__dirname, 'configs', 'config_wavy_oceanographic.csv');
         
+        // Insert into MongoDB first to get the generated ID
+        let finalId = formData.id;
+        let mongoResult = null;
+        try {
+            mongoResult = await insertIntoMongoDB('wavy', formData);
+            if (mongoResult.generatedId) {
+                finalId = mongoResult.generatedId;
+                console.log(`Generated wavy ID: ${finalId}`);
+            }
+        } catch (mongoError) {
+            console.error('MongoDB insertion failed:', mongoError);
+            return { success: false, message: `Failed to create wavy: ${mongoError.message}` };
+        }
+        
         // Read existing config
         let configContent = '';
         if (fs.existsSync(configPath)) {
@@ -292,31 +315,26 @@ ipcMain.handle('create-wavy', async (event, formData) => {
             configContent = 'WAVY_ID,status,last_sync,data_interval,is_active,latitude,longitude,ocean,area_type,region_coverage\n';
         }
         
-        // Check if wavy ID already exists
+        // Check if wavy ID already exists in CSV
         const lines = configContent.split('\n');
         const existingIds = lines.slice(1).map(line => line.split(',')[0]).filter(id => id.trim());
         
-        if (existingIds.includes(formData.id)) {
-            return { success: false, message: `Wavy ID ${formData.id} already exists` };
+        if (existingIds.includes(finalId)) {
+            return { success: false, message: `Wavy ID ${finalId} already exists in CSV` };
         }
         
         // Create new wavy entry
         const timestamp = new Date().toISOString();
         const isActive = formData.status === 1 ? 'true' : 'false';
-        const newEntry = `${formData.id},${formData.status},${timestamp},${formData.dataInterval},${isActive},${formData.latitude},${formData.longitude},${formData.ocean},${formData.areaType},"${formData.regionCoverage}"\n`;
+        const newEntry = `${finalId},${formData.status},${timestamp},${formData.dataInterval},${isActive},${formData.latitude},${formData.longitude},${formData.ocean},${formData.areaType},"${formData.regionCoverage}"\n`;
           // Append to config file
         fs.appendFileSync(configPath, newEntry);
         
-        // Insert into MongoDB
-        try {
-            await insertIntoMongoDB('wavy', formData);
-            console.log(`Successfully inserted wavy ${formData.id} into MongoDB`);
-        } catch (mongoError) {
-            console.error('MongoDB insertion failed:', mongoError);
-            // Don't fail the entire operation if MongoDB insertion fails
-        }
-        
-        return { success: true, message: `Wavy ${formData.id} created successfully` };
+        return { 
+            success: true, 
+            message: `Wavy ${finalId} created successfully`,
+            generatedId: finalId
+        };
     } catch (error) {
         console.error('Error creating wavy:', error);
         return { success: false, message: `Failed to create wavy: ${error.message}` };
@@ -349,7 +367,22 @@ async function insertIntoMongoDB(componentType, formData) {
         process.on('close', (code) => {
             if (code === 0) {
                 console.log(`MongoDB insertion successful: ${stdout.trim()}`);
-                resolve({ success: true, message: stdout.trim() });
+                
+                // Extract generated ID if present
+                let generatedId = null;
+                const lines = stdout.trim().split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('GENERATED_ID:')) {
+                        generatedId = line.substring('GENERATED_ID:'.length);
+                        break;
+                    }
+                }
+                
+                resolve({ 
+                    success: true, 
+                    message: stdout.trim(),
+                    generatedId: generatedId
+                });
             } else {
                 console.error(`MongoDB insertion failed (code ${code}): ${stderr}`);
                 reject(new Error(`ComponentCreator failed: ${stderr || stdout}`));
