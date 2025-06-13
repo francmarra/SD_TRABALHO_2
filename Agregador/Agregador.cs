@@ -50,23 +50,22 @@ class Program
             Console.WriteLine($"❌ Aggregator {aggregatorID} not found in MongoDB configuration or invalid format.");
             Console.WriteLine("💡 Ensure the aggregator ID is correct and ConfigImporter has been run.");
             return;
-        }
-
-        // Extract continent code from aggregator ID
-        continentCode = aggregatorConfig.ContinentCode;
-        continentName = aggregatorConfig.Continent; // Use continent name from config
+        }        // Extract continent code from aggregator ID
+        continentCode = aggregatorConfig.DerivedContinentCode;
+        continentName = aggregatorConfig.Continent; // Use region from config
 
         Console.WriteLine($"🚀 Starting {aggregatorID} for {continentName} ({continentCode})...");
 
-        // Configuration is already loaded, assign values
-        serverId = aggregatorConfig.ServerId;
-        rpcQueueName = aggregatorConfig.QueueName;
-
-        Console.WriteLine($"📡 Configuration loaded from MongoDB:");
-        Console.WriteLine($"   • Continent: {aggregatorConfig.Continent} ({aggregatorConfig.ContinentCode})");
-        Console.WriteLine($"   • Server: {aggregatorConfig.ServerId}");
+        // Configuration is already loaded, assign values with defaults for missing fields
+        serverId = !string.IsNullOrEmpty(aggregatorConfig.ServerId) ? aggregatorConfig.ServerId : aggregatorConfig.DerivedServerId;
+        rpcQueueName = !string.IsNullOrEmpty(aggregatorConfig.QueueName) ? aggregatorConfig.QueueName : aggregatorConfig.DerivedQueueName;        Console.WriteLine($"📡 Configuration loaded from MongoDB:");
+        Console.WriteLine($"   • Continent: {aggregatorConfig.Continent} ({continentCode})");
+        Console.WriteLine($"   • Ocean: {aggregatorConfig.Ocean}");
+        Console.WriteLine($"   • Area Type: {aggregatorConfig.AreaType}");
+        Console.WriteLine($"   • Server: {serverId}");
         Console.WriteLine($"   • Port: {aggregatorConfig.Port}");
-        Console.WriteLine($"   • Queue: {aggregatorConfig.QueueName}");        Console.WriteLine($"🔧 Initializing RabbitMQ components...");
+        Console.WriteLine($"   • Queue: {rpcQueueName}");
+        Console.WriteLine($"   • Subscribed Data Types: {string.Join(", ", aggregatorConfig.SubscribedDataTypes)}");Console.WriteLine($"🔧 Initializing RabbitMQ components...");
 
         try
         {
@@ -97,22 +96,30 @@ class Program
         // Cleanup resources
         publisher?.Dispose();
         Console.WriteLine($"✅ {aggregatorID} RabbitMQ resources cleaned up.");
-    }
-
-    static void HandleWavyData(string routingKey, string message)
+    }    static void HandleWavyData(string routingKey, string message)
     {
         try
         {
             var wavyMessage = JsonSerializer.Deserialize<WavyMessage>(message);
             if (wavyMessage != null)
             {
+                // Check if this aggregator is interested in this type of data
+                // (For now we'll accept all data, but this can be extended for filtering)
+                
                 // Add to processing queue
                 dataQueue.Enqueue(wavyMessage);
                 
                 Console.WriteLine($"📊 [{aggregatorID}] Received data from {wavyMessage.WavyId}: " +
                     $"SST={wavyMessage.SeaSurfaceTemperatureCelsius:F1}°C, " +
                     $"Lat={wavyMessage.Latitude:F4}, Lon={wavyMessage.Longitude:F4}");
-            }        }
+                
+                // Log subscription match (for debugging)
+                if (aggregatorConfig != null && aggregatorConfig.SubscribedDataTypes.Any())
+                {
+                    Console.WriteLine($"🎯 [{aggregatorID}] Processing for: {string.Join(", ", aggregatorConfig.SubscribedDataTypes)}");
+                }
+            }
+        }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ [{aggregatorID}] Error processing Wavy data: {ex.Message}");

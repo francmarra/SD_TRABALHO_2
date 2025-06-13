@@ -189,9 +189,14 @@ async function startAllComponents() {
         await new Promise(resolve => setTimeout(resolve, 3000));
     } else {
         console.log('Server already running, skipping...');
-    }    // Start aggregators for different ocean regions
-    const aggregatorIds = ['ATL-Agr01', 'PAC-Agr01', 'IND-Agr01', 'ARC-Agr01', 'ANT-Agr01'];
-    for (const aggregatorId of aggregatorIds) {
+    }    // Start key maritime aggregators from different regions
+    const maritimeAggregators = [
+        'NA-Agr01', 'NA-Agr03', 'EU-Agr01', 
+        'AS-Agr01', 'OC-Agr01', 'SA-Agr01', 
+        'AF-Agr03', 'AQ-Agr01'
+    ];
+    
+    for (const aggregatorId of maritimeAggregators) {
         document.getElementById('aggregator-id').value = aggregatorId;
         await startAggregator();
         await new Promise(resolve => setTimeout(resolve, 1500));
@@ -216,7 +221,7 @@ async function startAllComponents() {
     }
 
     // Show completion message
-    addToOutput('server', '\n[MANAGER] Full system startup completed! All 26 Wavy sensors and 5 ocean aggregators are now active.\n');
+    addToOutput('server', '\n[MANAGER] Full system startup completed! All 26 Wavy sensors and 8 maritime aggregators are now active.\n');
 }
 
 async function quickStartWavySet(setNumber) {
