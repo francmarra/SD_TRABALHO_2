@@ -8,6 +8,7 @@ let runningProcesses = new Set();
 document.addEventListener('DOMContentLoaded', () => {
     updateProcessList();
     setupEventListeners();
+    initializeAccordions();
     setInterval(updateProcessList, 2000); // Update every 2 seconds
 });
 
@@ -18,7 +19,17 @@ function setupEventListeners() {
         if (e.key === 'Enter') {
             sendCommand();
         }
-    });    // Keyboard shortcuts
+    });
+
+    // Server ID input - add event listener after DOM is ready
+    const serverIdInput = document.getElementById('server-id');
+    if (serverIdInput) {
+        serverIdInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                startServerWithId();
+            }
+        });
+    }// Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         // Ctrl+` to focus terminal input
         if (e.ctrlKey && e.key === '`') {
@@ -32,6 +43,15 @@ function setupEventListeners() {
         if (e.ctrlKey && e.shiftKey && e.key === 'S') {
             e.preventDefault();
             startServer();
+        }
+
+        // Ctrl+Shift+R to focus server ID input for regional servers
+        if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+            e.preventDefault();
+            const serverIdInput = document.getElementById('server-id');
+            if (serverIdInput) {
+                serverIdInput.focus();
+            }
         }
 
         // Ctrl+Shift+A to start all
@@ -138,8 +158,32 @@ async function startServer() {
         updateComponentStatus('server', true);
         addToOutput('server', '[MANAGER] Starting Servidor...\n');
         selectComponent('server');
+        // Clear the server ID input field
+        document.getElementById('server-id').value = '';
     } else {
         alert(`Failed to start server: ${result.message}`);
+    }
+}
+
+async function startServerWithId() {
+    const serverId = document.getElementById('server-id').value.trim();
+    
+    if (!serverId) {
+        // If no ID provided, start basic server
+        return startServer();
+    }
+
+    const processId = `server-${serverId}`;
+    const result = await ipcRenderer.invoke('start-server-instance', serverId);
+
+    if (result.success) {
+        runningProcesses.add(processId);
+        addServerToList(serverId, processId);
+        addToOutput(processId, `[MANAGER] Starting Regional Server ${serverId}...\n`);
+        selectComponent(processId);
+        document.getElementById('server-id').value = '';
+    } else {
+        alert(`Failed to start server instance: ${result.message}`);
     }
 }
 
@@ -354,16 +398,29 @@ function addServerToList(serverId, processId) {
         // Create servers section in the sidebar
         const sidebar = document.querySelector('.sidebar');
         const serverSection = document.querySelector('.section'); // Get the existing server section
-        
-        serversSection = document.createElement('div');
+          serversSection = document.createElement('div');
         serversSection.className = 'section servers-section';
         serversSection.innerHTML = `
-            <div class="section-title">Regional Servers</div>
-            <div id="server-list"></div>
+            <div class="section-title accordion-header" onclick="toggleAccordion('regional-servers')">
+                <span>🌍 Regional Servers</span>
+                <span class="accordion-arrow" id="regional-servers-arrow">▼</span>
+            </div>
+            <div class="accordion-content" id="regional-servers-content">
+                <div id="server-list"></div>
+            </div>
         `;
-        
-        // Insert after the main server section
+          // Insert after the main server section
         serverSection.parentNode.insertBefore(serversSection, serverSection.nextSibling);
+        
+        // Initialize the accordion state for the newly created section
+        const content = document.getElementById('regional-servers-content');
+        const arrow = document.getElementById('regional-servers-arrow');
+        if (content && arrow) {
+            // Keep it open by default since it's actively being used
+            content.classList.remove('collapsed');
+            arrow.classList.remove('rotated');
+            arrow.textContent = '▼';
+        }
     }
     
     const list = document.getElementById('server-list');
@@ -415,14 +472,15 @@ function selectComponent(componentId) {
     }
 
     currentComponent = componentId;
-    updateTerminalContent();
-
-    // Show terminal input for this component
+    updateTerminalContent();    // Show terminal input for this component
     const terminalInput = document.getElementById('terminal-input');
+    const terminal = document.querySelector('.terminal');
     if (runningProcesses.has(componentId)) {
         terminalInput.style.display = 'block';
+        terminal.classList.add('input-visible');
     } else {
         terminalInput.style.display = 'none';
+        terminal.classList.remove('input-visible');
     }
 }
 
@@ -668,6 +726,33 @@ function highlightErrors() {
 }
 
 // Accordion functionality
+function initializeAccordions() {
+    // Initialize accordion states - keep Aggregators open by default, others collapsed
+    const accordions = [
+        { id: 'aggregators', defaultOpen: true }, 
+        { id: 'wavys', defaultOpen: false },
+        { id: 'regional-quick-start', defaultOpen: false },
+        { id: 'regional-servers', defaultOpen: true } // This will be created dynamically when servers are added
+    ];
+    
+    accordions.forEach(accordion => {
+        const content = document.getElementById(`${accordion.id}-content`);
+        const arrow = document.getElementById(`${accordion.id}-arrow`);
+        
+        if (content && arrow) {
+            if (!accordion.defaultOpen) {
+                content.classList.add('collapsed');
+                arrow.classList.add('rotated');
+                arrow.textContent = '▶';
+            } else {
+                content.classList.remove('collapsed');
+                arrow.classList.remove('rotated');
+                arrow.textContent = '▼';
+            }
+        }
+    });
+}
+
 function toggleAccordion(id) {
     const content = document.getElementById(`${id}-content`);
     const arrow = document.getElementById(`${id}-arrow`);
