@@ -399,3 +399,11 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+ConfigImporter/
+
+ConfigImporterNew.cs
+
+ConfigImporterNew.csproj
+
+configs/

@@ -10,15 +10,12 @@ using Shared.MongoDB;
 
 class Program
 {
-    static RabbitMQRpcClient? rpcClient;
+    static RabbitMQPublisher? publisher;
     static ConfigService? configService;    
     static string wavyID = "";
-    static string continentCode = ""; // Loaded from MongoDB config
-    static string continentName = ""; // Loaded from MongoDB config
-    static string aggregatorId = "";  // Loaded from MongoDB config
-    static string serverId = "";      // Loaded from MongoDB config
-    static string rpcQueueName = "";  // Determined from MongoDB config
-    static volatile bool encerrarExecucao = false;    
+    static double latitude = 0;
+    static double longitude = 0;
+    static volatile bool encerrarExecucao = false;
 
     static async Task Main(string[] args)
     {
@@ -57,15 +54,12 @@ class Program
                 Console.WriteLine($"Wavy {wavyID} não encontrada na configuração do MongoDB ou ID inválido.");
                 Console.WriteLine("💡 Verifique o ID e se o ConfigImporter foi executado.");
                 wavyID = ""; // Reset to ask again
-                continue;
-            }
+                continue;            }
             
             // Assign loaded configuration to static fields
-            continentCode = wavyConfig.ContinentCode;
-            continentName = wavyConfig.Continent;
-            aggregatorId = wavyConfig.AggregatorId;
-            serverId = wavyConfig.ServerId;
-            Console.WriteLine($"[{wavyID}] Configuração carregada do MongoDB: {continentName} ({continentCode}), Aggregator: {aggregatorId}, Server: {serverId}");
+            latitude = wavyConfig.Latitude;
+            longitude = wavyConfig.Longitude;
+            Console.WriteLine($"[{wavyID}] Configuração carregada do MongoDB: Lat: {latitude:F4}, Lon: {longitude:F4}");
 
             // Status check and update
             if (wavyConfig.Status == 0) 
@@ -77,7 +71,6 @@ class Program
                     // Update status in MongoDB
                     await configService.UpdateWavyStatusAsync(wavyID, 1, DateTime.UtcNow);
                     Console.WriteLine($"{wavyID} foi atualizado para Online no MongoDB.");
-                    // wavyConfig.Status = 1; // The local object is not used beyond this point for status
                 }
                 else
                 {
@@ -87,36 +80,22 @@ class Program
             }
             break; 
         }
-        
-        // Determine RPC queue name based on the Wavy's continent code from loaded config
-        rpcQueueName = RabbitMQConfig.RPC_QUEUE_PREFIX + continentCode; 
 
-        Console.WriteLine($"[{wavyID}] Inicializando RabbitMQ RPC Client...");
+        Console.WriteLine($"[{wavyID}] Inicializando RabbitMQ Publisher...");
 
         try
         {
-            rpcClient = new RabbitMQRpcClient();
+            publisher = new RabbitMQPublisher();
             Console.WriteLine($"[{wavyID}] RabbitMQ configurado com sucesso.");
-            Console.WriteLine($"[{wavyID}] RPC Queue: {rpcQueueName}");
+            Console.WriteLine($"[{wavyID}] Publicando dados para o tópico de dados oceânicos...");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[{wavyID}] Erro ao configurar RabbitMQ: {ex.Message}");
-            return;
-        }
-
-        // Estabelece handshake com o Agregador
-        bool conectado = await EstabelecerHandshake();
-        if (!conectado)
-        {
-            Console.WriteLine($"[{wavyID}] Falha ao estabelecer conexão com o Agregador.");
-            return;
-        }
-
-        Console.WriteLine($"[{wavyID}] Conexão estabelecida com o Agregador via RabbitMQ RPC.");
+            return;        }
 
         // Inicia o envio de dados
-        var dataTask = Task.Run(async () => await EnviarDadosPeriodicamente());
+        var dataTask = Task.Run(async () => await PublicarDadosPeriodicamente());
 
         // Monitorar comando de desligamento
         var shutdownTask = Task.Run(async () => await MonitorarComandoDesligar());
@@ -125,46 +104,13 @@ class Program
         await Task.WhenAny(dataTask, shutdownTask);
 
         Console.WriteLine($"[{wavyID}] Encerrando execução...");
-        rpcClient?.Dispose();
+        publisher?.Dispose();
         Console.WriteLine($"[{wavyID}] RabbitMQ resources cleaned up.");
-    }
-
-    static async Task<bool> EstabelecerHandshake()
-    {
-        if (rpcClient == null) return false;
-
-        try
-        {
-            var request = new RpcRequest
-            {
-                Type = "HANDSHAKE",
-                WavyId = wavyID
-            };
-
-            var response = await rpcClient.CallAsync(rpcQueueName, request, TimeSpan.FromSeconds(10));
-            
-            if (response.Status == "OK")
-            {
-                Console.WriteLine($"[{wavyID}] Handshake estabelecido: {response.Message}");
-                return true;
-            }
-            else
-            {
-                Console.WriteLine($"[{wavyID}] Falha no handshake: {response.Message}");
-                return false;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[{wavyID}] Erro durante handshake: {ex.Message}");
-            return false;
-        }
-    }    static async Task EnviarDadosPeriodicamente()
+    }    static async Task PublicarDadosPeriodicamente()
     {
         var rnd = new Random();
-        int segundos = 0;
 
-        while (!encerrarExecucao && rpcClient != null)
+        while (!encerrarExecucao && publisher != null)
         {            
             try
             {
@@ -173,38 +119,25 @@ class Program
                 
                 // Set metadata fields
                 wavyMessage.WavyId = wavyID;
-                wavyMessage.Continent = continentName;
-                wavyMessage.ContinentCode = continentCode;
-                wavyMessage.AggregatorId = aggregatorId;
-                wavyMessage.ServerId = serverId;
+                wavyMessage.Latitude = latitude;
+                wavyMessage.Longitude = longitude;
                 wavyMessage.Timestamp = DateTime.UtcNow.ToString("o");
 
-                var request = new RpcRequest
-                {
-                    Type = "DATA",
-                    WavyId = wavyID,
-                    Data = JsonSerializer.Serialize(wavyMessage)
-                };
-
-                var response = await rpcClient.CallAsync(rpcQueueName, request, TimeSpan.FromSeconds(10));
-                if (response.Status == "OK")
-                {
-                    Console.WriteLine($"[{wavyID}] Dados enviados com sucesso: {response.Message}");
-                    // Update LastSync and ensure status is 1 (Online)
-                    await configService.UpdateWavyStatusAsync(wavyID, 1, DateTime.UtcNow);
-                }
-                else
-                {
-                    Console.WriteLine($"[{wavyID}] Erro ao enviar dados: {response.Message}");
-                }
+                // Publish data to ocean data topic
+                string routingKey = $"ocean.data.{wavyID}";
+                publisher.PublishMessage("ocean_data_exchange", routingKey, JsonSerializer.Serialize(wavyMessage));
+                
+                Console.WriteLine($"[{wavyID}] Dados oceânicos publicados: SST={wavyMessage.SeaSurfaceTemperatureCelsius:F1}°C, Lat={latitude:F4}, Lon={longitude:F4}");
+                
+                // Update LastSync status in MongoDB
+                await configService!.UpdateWavyStatusAsync(wavyID, 1, DateTime.UtcNow);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[{wavyID}] Erro ao enviar dados: {ex.Message}");
+                Console.WriteLine($"[{wavyID}] Erro ao publicar dados: {ex.Message}");
             }
 
             await Task.Delay(1000);
-            segundos++;
         }
     }
 
@@ -214,35 +147,17 @@ class Program
         {
             var comando = Console.ReadLine();
             if (comando != null && comando.Trim().Equals("DLG", StringComparison.OrdinalIgnoreCase))
-            {
-                Console.WriteLine($"[{wavyID}] Terminando execução. Enviando pedido de desligamento...");
+            {                Console.WriteLine($"[{wavyID}] Terminando execução...");
                 
-                if (rpcClient != null)
-                {
-                    try
-                    {
-                        var request = new RpcRequest
-                        {
-                            Type = "SHUTDOWN",
-                            WavyId = wavyID
-                        };
-
-                        var response = await rpcClient.CallAsync(rpcQueueName, request, TimeSpan.FromSeconds(10));
-                        Console.WriteLine($"[{wavyID}] Resposta do Agregador: {response.Message}");
-                        // Update Wavy status to Offline (0) in MongoDB upon clean shutdown
-                        await configService.UpdateWavyStatusAsync(wavyID, 0, DateTime.UtcNow);
-                        Console.WriteLine($"[{wavyID}] Status atualizado para Offline no MongoDB.");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[{wavyID}] Erro ao enviar desligamento: {ex.Message}");
-                    }
-                }
+                // Update Wavy status to Offline (0) in MongoDB upon clean shutdown
+                await configService!.UpdateWavyStatusAsync(wavyID, 0, DateTime.UtcNow);
+                Console.WriteLine($"[{wavyID}] Status atualizado para Offline no MongoDB.");
 
                 encerrarExecucao = true;
                 break;
             }
-        }    }
+        }
+    }
 
     /// <summary>
     /// Generates comprehensive ocean sensor data simulating real-world marine monitoring buoy readings.

@@ -3,21 +3,14 @@ using System.Text.Json.Serialization;
 namespace Shared.Models
 {
     public class WavyMessage
-    {
-        [JsonPropertyName("wavy_id")]
+    {        [JsonPropertyName("wavy_id")]
         public string WavyId { get; set; } = "";
         
-        [JsonPropertyName("continent")]
-        public string Continent { get; set; } = "";
+        [JsonPropertyName("latitude")]
+        public double Latitude { get; set; }
         
-        [JsonPropertyName("continent_code")]
-        public string ContinentCode { get; set; } = "";
-        
-        [JsonPropertyName("aggregator_id")]
-        public string AggregatorId { get; set; } = "";
-        
-        [JsonPropertyName("server_id")]
-        public string ServerId { get; set; } = "";
+        [JsonPropertyName("longitude")]
+        public double Longitude { get; set; }
         
         [JsonPropertyName("timestamp")]
         public string Timestamp { get; set; } = "";

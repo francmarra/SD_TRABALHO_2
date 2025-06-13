@@ -43,9 +43,21 @@ namespace Shared.RabbitMQ
             var shutdownMessage = new { AggregatorId = aggregatorId, Timestamp = DateTime.Now.ToString("o") };
             var message = JsonSerializer.Serialize(shutdownMessage);
             var body = Encoding.UTF8.GetBytes(message);
-            
-            channel.BasicPublish(exchange: RabbitMQConfig.SHUTDOWN_EXCHANGE,
+              channel.BasicPublish(exchange: RabbitMQConfig.SHUTDOWN_EXCHANGE,
                                routingKey: "",
+                               basicProperties: null,
+                               body: body);
+        }
+
+        public void PublishMessage(string exchange, string routingKey, string message)
+        {
+            // Declare exchange if it doesn't exist (for dynamic exchanges)
+            channel.ExchangeDeclare(exchange, ExchangeType.Topic, durable: true);
+            
+            var body = Encoding.UTF8.GetBytes(message);
+            
+            channel.BasicPublish(exchange: exchange,
+                               routingKey: routingKey,
                                basicProperties: null,
                                body: body);
         }

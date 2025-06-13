@@ -49,10 +49,8 @@ namespace Shared.MongoDB
             {                var document = new BsonDocument
                 {
                     ["wavy_id"] = message.WavyId,
-                    ["aggregator_id"] = message.AggregatorId,
-                    ["continent"] = message.Continent,
-                    ["continent_code"] = message.ContinentCode,
-                    ["server_id"] = message.ServerId,
+                    ["latitude"] = message.Latitude,
+                    ["longitude"] = message.Longitude,
                     ["timestamp"] = message.Timestamp,
                     ["received_at"] = DateTime.UtcNow,
                     
@@ -114,10 +112,8 @@ namespace Shared.MongoDB
                     ["message_count"] = data.Messages.Count,                    ["messages"] = new BsonArray(data.Messages.Select(m => new BsonDocument
                     {
                         ["wavy_id"] = m.WavyId,
-                        ["aggregator_id"] = m.AggregatorId,
-                        ["continent"] = m.Continent,
-                        ["continent_code"] = m.ContinentCode,
-                        ["server_id"] = m.ServerId,
+                        ["latitude"] = m.Latitude,
+                        ["longitude"] = m.Longitude,
                         ["timestamp"] = m.Timestamp,
                         
                         // Ocean Sensor Data

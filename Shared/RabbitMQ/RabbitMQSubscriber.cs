@@ -66,6 +66,30 @@ namespace Shared.RabbitMQ
             channel.BasicConsume(queue: shutdownQueue, autoAck: false, consumer: consumer);
         }
 
+        public void SubscribeToTopic(string exchange, string routingKeyPattern, Action<string, string> onMessageReceived)
+        {
+            // Declare the topic exchange
+            channel.ExchangeDeclare(exchange, ExchangeType.Topic, durable: true);
+            
+            // Create a temporary queue
+            var queueName = channel.QueueDeclare().QueueName;
+            
+            // Bind queue to exchange with routing key pattern
+            channel.QueueBind(queue: queueName, exchange: exchange, routingKey: routingKeyPattern);
+            
+            var consumer = new EventingBasicConsumer(channel);
+            consumer.Received += (model, ea) =>
+            {
+                var body = ea.Body.ToArray();
+                var message = Encoding.UTF8.GetString(body);
+                var routingKey = ea.RoutingKey;
+                onMessageReceived(routingKey, message);
+                channel.BasicAck(ea.DeliveryTag, false);
+            };
+            
+            channel.BasicConsume(queue: queueName, autoAck: false, consumer: consumer);
+        }
+
         public void Dispose()
         {
             channel?.Dispose();

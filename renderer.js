@@ -139,7 +139,7 @@ async function startAggregator() {
 async function startWavy() {
     const wavyId = document.getElementById('wavy-id').value.trim();
     if (!wavyId) {
-        alert('Please enter a Wavy ID (e.g., N_Wavy01)');
+        alert('Please enter a Wavy ID (e.g., Wavy01, Wavy02, etc.)');
         return;
     }
 
@@ -189,12 +189,10 @@ async function startAllComponents() {
         await new Promise(resolve => setTimeout(resolve, 3000));
     } else {
         console.log('Server already running, skipping...');
-    }
-
-    // Start aggregators for all 7 continents
-    const continents = ['EU', 'NA', 'SA', 'AF', 'AS', 'OC', 'AQ'];
-    for (const continent of continents) {
-        document.getElementById('aggregator-id').value = `${continent}-Agr01`;
+    }    // Start aggregators for different ocean regions
+    const aggregatorIds = ['ATL-Agr01', 'PAC-Agr01', 'IND-Agr01', 'ARC-Agr01', 'ANT-Agr01'];
+    for (const aggregatorId of aggregatorIds) {
+        document.getElementById('aggregator-id').value = aggregatorId;
         await startAggregator();
         await new Promise(resolve => setTimeout(resolve, 1500));
     }
@@ -202,32 +200,55 @@ async function startAllComponents() {
     // Wait for aggregators to initialize
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Start wavy sensors for each continent
-    for (const continent of continents) {
-        document.getElementById('wavy-id').value = `${continent}-Wavy01`;
+    // Start all Wavy sensors (Wavy01-Wavy26)
+    const allWavyIds = [
+        'Wavy01', 'Wavy02', 'Wavy03', 'Wavy04', 'Wavy05', 'Wavy06',
+        'Wavy07', 'Wavy08', 'Wavy09', 'Wavy10', 'Wavy11', 'Wavy12',
+        'Wavy13', 'Wavy14', 'Wavy15', 'Wavy16', 'Wavy17', 'Wavy18',
+        'Wavy19', 'Wavy20', 'Wavy21', 'Wavy22', 'Wavy23', 'Wavy24',
+        'Wavy25', 'Wavy26'
+    ];
+
+    for (const wavyId of allWavyIds) {
+        document.getElementById('wavy-id').value = wavyId;
         await startWavy();
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 800)); // Shorter delay for many sensors
     }
 
     // Show completion message
-    addToOutput('server', '\n[MANAGER] Full system startup completed! All continents (EU, NA, SA, AF, AS, OC, AQ) are now active.\n');
+    addToOutput('server', '\n[MANAGER] Full system startup completed! All 26 Wavy sensors and 5 ocean aggregators are now active.\n');
 }
 
-async function quickStartRegion(continent) {
-    // Start aggregator for continent
-    document.getElementById('aggregator-id').value = `${continent}-Agr01`;
-    await startAggregator();
+async function quickStartWavySet(setNumber) {
+    // Define Wavy sets for different ocean regions
+    const wavySets = {
+        1: ['Wavy01', 'Wavy02', 'Wavy03'], // Atlantic Ocean
+        2: ['Wavy04', 'Wavy05', 'Wavy06'], // North Atlantic
+        3: ['Wavy07', 'Wavy08', 'Wavy09'], // Pacific Ocean 
+        4: ['Wavy10', 'Wavy11', 'Wavy12'], // South Pacific
+        5: ['Wavy13', 'Wavy14', 'Wavy15'], // Indian Ocean
+        6: ['Wavy16', 'Wavy17', 'Wavy18'], // Arctic Ocean
+        7: ['Wavy19', 'Wavy20', 'Wavy21'], // Southern Ocean
+        8: ['Wavy22', 'Wavy23', 'Wavy24'], // Mediterranean/Caribbean
+        9: ['Wavy25', 'Wavy26']            // Antarctic Waters
+    };
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const wavyIds = wavySets[setNumber];
+    if (!wavyIds) {
+        alert('Invalid Wavy set number');
+        return;
+    }
 
-    // Start a couple of wavys for the continent
-    document.getElementById('wavy-id').value = `${continent}-Wavy01`;
-    await startWavy();
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    document.getElementById('wavy-id').value = `${continent}-Wavy02`;
-    await startWavy();
+    // Start the Wavys in sequence
+    for (let i = 0; i < wavyIds.length; i++) {
+        document.getElementById('wavy-id').value = wavyIds[i];
+        await startWavy();
+        
+        // Small delay between starts
+        if (i < wavyIds.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }    addToOutput('server', `\n[MANAGER] Quick Start: Ocean monitoring set ${setNumber} deployed (${wavyIds.join(', ')}).\n`);
 }
 
 function addAggregatorToList(aggregatorId) {

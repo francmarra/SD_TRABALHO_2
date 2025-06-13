@@ -8,7 +8,6 @@ using Shared.MongoDB;
 class Program
 {
     static readonly ConcurrentQueue<WavyMessage> dataQueue = new();
-    static RabbitMQRpcServer? rpcServer;
     static RabbitMQPublisher? publisher;
     static ConfigService? configService;
     static volatile bool encerrarExecucao = false;
@@ -67,28 +66,22 @@ class Program
         Console.WriteLine($"   • Continent: {aggregatorConfig.Continent} ({aggregatorConfig.ContinentCode})");
         Console.WriteLine($"   • Server: {aggregatorConfig.ServerId}");
         Console.WriteLine($"   • Port: {aggregatorConfig.Port}");
-        Console.WriteLine($"   • Queue: {aggregatorConfig.QueueName}");
-
-        Console.WriteLine($"🔧 Initializing RabbitMQ components...");
+        Console.WriteLine($"   • Queue: {aggregatorConfig.QueueName}");        Console.WriteLine($"🔧 Initializing RabbitMQ components...");
 
         try
         {
             // Initialize RabbitMQ Publisher for sending data to Server
             publisher = new RabbitMQPublisher();
-            Console.WriteLine($"✅ RabbitMQ Publisher configured successfully.");
-
-            // Initialize RabbitMQ RPC Server for handling Wavy requests
-            rpcServer = new RabbitMQRpcServer(rpcQueueName, HandleRpcRequest);
-            rpcServer.Start();
-            Console.WriteLine($"✅ RabbitMQ RPC Server started on queue: {rpcQueueName}");
+            Console.WriteLine($"✅ RabbitMQ Publisher configured successfully.");            // Subscribe to ocean data exchange instead of using RPC
+            var subscriber = new RabbitMQSubscriber($"{aggregatorID}_ocean_queue");
+            subscriber.SubscribeToTopic("ocean_data_exchange", "ocean.data.*", HandleWavyData);
+            Console.WriteLine($"✅ Subscribed to ocean data exchange with pattern: ocean.data.*");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ Error configuring RabbitMQ: {ex.Message}");
             return;
-        }
-
-        Console.WriteLine($"🎯 {aggregatorID} ready and waiting for Wavy connections...\n");
+        }        Console.WriteLine($"🎯 {aggregatorID} ready and waiting for Wavy data...\n");
 
         // Process data and send to Server every 10 seconds
         var dataTask = Task.Run(async () => await ProcessAndSendData());
@@ -102,158 +95,31 @@ class Program
         Console.WriteLine($"🔄 {aggregatorID} shutting down...");
         
         // Cleanup resources
-        rpcServer?.Dispose();
         publisher?.Dispose();
         Console.WriteLine($"✅ {aggregatorID} RabbitMQ resources cleaned up.");
     }
 
-    static Task<RpcResponse> HandleRpcRequest(RpcRequest request)
+    static void HandleWavyData(string routingKey, string message)
     {
         try
         {
-            switch (request.Type?.ToUpper())
+            var wavyMessage = JsonSerializer.Deserialize<WavyMessage>(message);
+            if (wavyMessage != null)
             {
-                case "HANDSHAKE":
-                    return Task.FromResult(HandleHandshake(request));
+                // Add to processing queue
+                dataQueue.Enqueue(wavyMessage);
                 
-                case "DATA":
-                    return Task.FromResult(HandleDataRequest(request));
-                
-                case "SHUTDOWN":
-                    return Task.FromResult(HandleShutdownRequest(request));
-                
-                default:
-                    return Task.FromResult(new RpcResponse
-                    {
-                        Status = "ERROR",
-                        Message = "Tipo de request não reconhecido"
-                    });
-            }
-        }
+                Console.WriteLine($"📊 [{aggregatorID}] Received data from {wavyMessage.WavyId}: " +
+                    $"SST={wavyMessage.SeaSurfaceTemperatureCelsius:F1}°C, " +
+                    $"Lat={wavyMessage.Latitude:F4}, Lon={wavyMessage.Longitude:F4}");
+            }        }
         catch (Exception ex)
         {
-            Console.WriteLine($"[{aggregatorID}] Erro ao processar RPC request: {ex.Message}");
-            return Task.FromResult(new RpcResponse
-            {
-                Status = "ERROR",
-                Message = ex.Message
-            });
-        }
-    }    static RpcResponse HandleHandshake(RpcRequest request)
-    {
-        var wavyId = request.WavyId ?? "";
-        
-        // Check if Wavy ID follows continent-based format and matches aggregator's continent
-        if (!IsValidWavyIdForAggregator(wavyId))
-        {
-            Console.WriteLine($"❌ [{aggregatorID}] Handshake rejected: {wavyId} (wrong continent or invalid format)");
-            return new RpcResponse
-            {
-                Status = "ERROR",
-                Message = $"Wavy {wavyId} is not configured for continent {continentCode} or has invalid format"
-            };
-        }
-
-        Console.WriteLine($"🤝 [{aggregatorID}] Handshake accepted: {wavyId}");
-        return new RpcResponse
-        {
-            Status = "OK",
-            Message = $"Handshake successful with {aggregatorID}",
-            Data = JsonSerializer.Serialize(new { 
-                aggregatorId = aggregatorID, 
-                continent = continentName,
-                continentCode = continentCode,
-                serverId = serverId 
-            })
-        };
-    }
-
-    static bool IsValidWavyIdForAggregator(string wavyId)
-    {
-        if (string.IsNullOrEmpty(wavyId) || !wavyId.Contains('-'))
-            return false;
-
-        var parts = wavyId.Split('-');
-        if (parts.Length != 2)
-            return false;
-
-        var wavyContinentCode = parts[0];
-        // var wavyPart = parts[1]; // wavyPart is not used, can be removed or commented
-
-        // Check if Wavy belongs to the same continent as this aggregator
-        if (wavyContinentCode != continentCode) // continentCode is now a class member
-            return false;
-
-        // Validate Wavy part format (should be Wavy followed by number)
-        // This validation can be enhanced based on specific Wavy ID naming conventions
-        // For now, just checking if it starts with "Wavy" and has a numeric suffix.
-        // Example: EU-Wavy01
-        return ContinentConfig.IsValidWavyId(wavyId); // Using existing validation
-    }
-
-    static RpcResponse HandleDataRequest(RpcRequest request)
-    {
-        try
-        {
-            var wavyId = request.WavyId ?? "";
-            var data = request.Data ?? "";            if (string.IsNullOrEmpty(data))
-            {
-                return new RpcResponse
-                {
-                    Status = "ERROR",
-                    Message = "Data cannot be empty"
-                };
-            }
-
-            // Parse the WavyMessage from JSON
-            var wavyMessage = JsonSerializer.Deserialize<WavyMessage>(data);
-            if (wavyMessage == null)
-            {
-                return new RpcResponse
-                {
-                    Status = "ERROR",
-                    Message = "Failed to deserialize sensor data"
-                };
-            }
-
-            // Add continent and aggregator information to the message            wavyMessage.Continent = continentName;
-            wavyMessage.ContinentCode = continentCode;
-            wavyMessage.AggregatorId = aggregatorID;
-            wavyMessage.ServerId = serverId;
-
-            // Add to processing queue
-            dataQueue.Enqueue(wavyMessage);
-
-            Console.WriteLine($"📊 [{aggregatorID}] Ocean data received from {wavyId}: SST={wavyMessage.SeaSurfaceTemperatureCelsius:F1}°C, Wind={wavyMessage.WindSpeedMs:F1}m/s, Waves={wavyMessage.WaveHeightMeters:F1}m");
-            
-            return new RpcResponse
-            {
-                Status = "OK",
-                Message = "Data received successfully"
-            };
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[{aggregatorID}] Erro ao processar dados: {ex.Message}");
-            return new RpcResponse
-            {
-                Status = "ERROR",
-                Message = $"Erro ao processar dados: {ex.Message}"
-            };
+            Console.WriteLine($"❌ [{aggregatorID}] Error processing Wavy data: {ex.Message}");
         }
     }
 
-    static RpcResponse HandleShutdownRequest(RpcRequest request)
-    {
-        var wavyId = request.WavyId ?? "";
-        Console.WriteLine($"[{aggregatorID}] Pedido de desligamento recebido de {wavyId}");
-        
-        return new RpcResponse
-        {
-            Status = "OK",
-            Message = $"Desligamento de {wavyId} reconhecido"
-        };
-    }    static async Task ProcessAndSendData()
+    static async Task ProcessAndSendData()
     {
         while (!encerrarExecucao)
         {
