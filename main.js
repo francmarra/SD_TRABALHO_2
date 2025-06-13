@@ -69,6 +69,10 @@ ipcMain.handle('start-server', () => {
     return startProcess('server', 'Servidor', ['run']);
 });
 
+ipcMain.handle('start-server-instance', (event, serverId) => {
+    return startProcess(`server-${serverId}`, 'Servidor', ['run'], serverId);
+});
+
 ipcMain.handle('start-aggregator', (event, aggregatorId) => {
     return startProcess(`aggregator-${aggregatorId}`, 'Agregador', ['run'], aggregatorId);
 });
@@ -168,21 +172,14 @@ ipcMain.handle('start-regional-components', async (event, regionCode) => {
     const regionConfig = regionMappings[regionCode];
     if (!regionConfig) {
         return { success: false, message: `Invalid region code: ${regionCode}` };
-    }
-
-    try {
-        // Send server ID to the already running server terminal
-        const serverProcess = processes.get('server');
-        if (serverProcess && serverProcess.stdin && !serverProcess.stdin.destroyed && !serverProcess.killed) {
-            serverProcess.stdin.write(regionConfig.serverId + '\n');
-            if (mainWindow) {
-                mainWindow.webContents.send('process-output', 'server', 
-                    `[MANAGER] Sent Server ID: ${regionConfig.serverId}\n`);
-            }
-            results.push({ type: 'server', id: regionConfig.serverId, success: true });
-        } else {
-            results.push({ type: 'server', id: regionConfig.serverId, success: false, message: 'Server not running' });
-        }
+    }    try {
+        // Start a dedicated server instance for this region
+        const serverProcessId = `server-${regionConfig.serverId}`;
+        const serverResult = startProcess(serverProcessId, 'Servidor', ['run'], regionConfig.serverId);
+        results.push({ type: 'server', id: regionConfig.serverId, processId: serverProcessId, ...serverResult });
+        
+        // Wait for server to initialize before starting other components
+        await new Promise(resolve => setTimeout(resolve, 3000));
 
         // Start aggregators
         for (const aggregatorId of regionConfig.aggregators) {

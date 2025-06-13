@@ -190,13 +190,6 @@ async function stopAllProcesses() {
 }
 
 async function startAllComponents() {
-    // Check if server is running
-    if (!runningProcesses.has('server')) {
-        addToOutput('server', '[MANAGER] Server not running. Please start the server first.\n');
-        alert('Server must be running before starting all components. The server should auto-start when the application launches.');
-        return;
-    }
-
     // Use the new regional approach - start all regions
     await startAllRegions();
 }
@@ -218,18 +211,19 @@ async function quickStartRegion(regionCode) {
     
     try {
         const result = await ipcRenderer.invoke('start-regional-components', regionCode);
-        
-        if (result.success) {
+          if (result.success) {
             // Update UI for started components
             result.results.forEach(componentResult => {
                 if (componentResult.success) {
-                    const processId = componentResult.type === 'server' ? 'server' : 
+                    const processId = componentResult.type === 'server' ? componentResult.processId : 
                                     componentResult.type === 'aggregator' ? `aggregator-${componentResult.id}` :
                                     `wavy-${componentResult.id}`;
                     
                     runningProcesses.add(processId);
                     
-                    if (componentResult.type === 'aggregator') {
+                    if (componentResult.type === 'server') {
+                        addServerToList(componentResult.id, componentResult.processId);
+                    } else if (componentResult.type === 'aggregator') {
                         addAggregatorToList(componentResult.id);
                     } else if (componentResult.type === 'wavy') {
                         addWavyToList(componentResult.id);
@@ -238,21 +232,22 @@ async function quickStartRegion(regionCode) {
                     updateComponentStatus(processId, true);
                 }
             });
-            
-            // Show summary
+              // Show summary
             const successCount = result.results.filter(r => r.success).length;
             const totalCount = result.results.length;
             
-            addToOutput('server', 
+            const serverResult = result.results.find(r => r.type === 'server');
+            const serverProcessId = serverResult ? serverResult.processId : 'server';
+            
+            addToOutput(serverProcessId, 
                 `[MANAGER] Regional deployment completed for ${regionName}!\n` +
                 `[MANAGER] Successfully started ${successCount}/${totalCount} components\n` +
                 `[MANAGER] • Server: ${regionCode}-S\n` +
                 `[MANAGER] • Aggregators: ${result.results.filter(r => r.type === 'aggregator' && r.success).map(r => r.id).join(', ')}\n` +
                 `[MANAGER] • Wavy Sensors: ${result.results.filter(r => r.type === 'wavy' && r.success).map(r => r.id).join(', ')}\n\n`);
                 
-            // Auto-select server to show output
-            selectComponent('server');
-        } else {
+            // Auto-select the new server to show output
+            selectComponent(serverProcessId);        } else {
             addToOutput('server', `[ERROR] Failed to start regional components: ${result.message}\n`);
             alert(`Failed to start regional components for ${regionName}: ${result.message}`);
         }
@@ -265,27 +260,35 @@ async function quickStartRegion(regionCode) {
 async function startAllRegions() {
     const regions = ['EU', 'NA', 'SA', 'AF', 'AS', 'OC', 'AQ'];
     
-    addToOutput('server', '\n[MANAGER] ========================================\n');
-    addToOutput('server', '[MANAGER] 🌍 GLOBAL DEPLOYMENT INITIATED 🌍\n');
-    addToOutput('server', '[MANAGER] ========================================\n\n');
+    // Create a general output location for global deployment messages
+    if (!componentOutputs.has('global-deployment')) {
+        componentOutputs.set('global-deployment', '');
+    }
+    
+    addToOutput('global-deployment', '\n[MANAGER] ========================================\n');
+    addToOutput('global-deployment', '[MANAGER] 🌍 GLOBAL DEPLOYMENT INITIATED 🌍\n');
+    addToOutput('global-deployment', '[MANAGER] ========================================\n\n');
     
     for (let i = 0; i < regions.length; i++) {
         const region = regions[i];
-        addToOutput('server', `[MANAGER] Starting region ${i + 1}/7: ${region}...\n`);
+        addToOutput('global-deployment', `[MANAGER] Starting region ${i + 1}/7: ${region}...\n`);
         
         await quickStartRegion(region);
         
         // Add delay between regions to avoid overwhelming the system
         if (i < regions.length - 1) {
-            addToOutput('server', '[MANAGER] Waiting before starting next region...\n\n');
+            addToOutput('global-deployment', '[MANAGER] Waiting before starting next region...\n\n');
             await new Promise(resolve => setTimeout(resolve, 3000));
         }
     }
     
-    addToOutput('server', '\n[MANAGER] ========================================\n');
-    addToOutput('server', '[MANAGER] 🎉 GLOBAL DEPLOYMENT COMPLETED! 🎉\n');
-    addToOutput('server', '[MANAGER] All regional systems are now active.\n');
-    addToOutput('server', '[MANAGER] ========================================\n\n');
+    addToOutput('global-deployment', '\n[MANAGER] ========================================\n');
+    addToOutput('global-deployment', '[MANAGER] 🎉 GLOBAL DEPLOYMENT COMPLETED! 🎉\n');
+    addToOutput('global-deployment', '[MANAGER] All regional systems are now active.\n');
+    addToOutput('global-deployment', '[MANAGER] ========================================\n\n');
+    
+    // Select the global deployment view
+    selectComponent('global-deployment');
 }
 
 function addAggregatorToList(aggregatorId) {
@@ -324,11 +327,66 @@ function addWavyToList(wavyId) {
     list.appendChild(item);
 }
 
+function addServerToList(serverId, processId) {
+    // Check if we have a servers section, if not create one
+    let serversSection = document.querySelector('.servers-section');
+    if (!serversSection) {
+        // Create servers section in the sidebar
+        const sidebar = document.querySelector('.sidebar');
+        const serverSection = document.querySelector('.section'); // Get the existing server section
+        
+        serversSection = document.createElement('div');
+        serversSection.className = 'section servers-section';
+        serversSection.innerHTML = `
+            <div class="section-title">Regional Servers</div>
+            <div id="server-list"></div>
+        `;
+        
+        // Insert after the main server section
+        serverSection.parentNode.insertBefore(serversSection, serverSection.nextSibling);
+    }
+    
+    const list = document.getElementById('server-list');
+    
+    // Check if server already exists in list
+    const existingItem = list.querySelector(`[data-component="${processId}"]`);
+    if (existingItem) return; // Don't add duplicates
+
+    const item = document.createElement('div');
+    item.className = 'component-item';
+    item.setAttribute('data-component', processId);
+    item.onclick = () => selectComponent(processId);
+
+    item.innerHTML = `
+        <div class="component-name">${serverId}</div>
+        <div class="component-status running" id="status-${processId}">Running</div>
+        <button class="btn stop" onclick="event.stopPropagation(); stopProcess('${processId}')" style="margin-top: 5px; font-size: 10px;">Stop</button>
+    `;
+
+    list.appendChild(item);
+}
+
 function selectComponent(componentId) {
     // Remove active class from all components
     document.querySelectorAll('.component-item').forEach(item => {
         item.classList.remove('active');
     });
+
+    // Add virtual component for global deployment if it doesn't exist
+    if (componentId === 'global-deployment' && !document.querySelector(`[data-component="${componentId}"]`)) {
+        // Create a virtual component item for global deployment
+        const sidebar = document.querySelector('.sidebar');
+        const virtualSection = document.createElement('div');
+        virtualSection.className = 'section';
+        virtualSection.innerHTML = `
+            <div class="section-title">Global Deployment</div>
+            <div class="component-item" data-component="global-deployment" onclick="selectComponent('global-deployment')">
+                <div class="component-name">Global Status</div>
+                <div class="component-status running">Active</div>
+            </div>
+        `;
+        sidebar.appendChild(virtualSection);
+    }
 
     // Add active class to selected component
     const selectedElement = document.querySelector(`[data-component="${componentId}"]`);
