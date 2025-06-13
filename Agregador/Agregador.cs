@@ -66,22 +66,27 @@ class Program
         Console.WriteLine($"   • Server: {serverId}");
         Console.WriteLine($"   • Port: {aggregatorConfig.Port}");
         Console.WriteLine($"   • Queue: {rpcQueueName}");
-        Console.WriteLine($"   • Subscribed Data Types: {string.Join(", ", aggregatorConfig.SubscribedDataTypes)}");Console.WriteLine($"🔧 Initializing RabbitMQ components...");
-
-        try
+        Console.WriteLine($"   • Subscribed Data Types: {string.Join(", ", aggregatorConfig.SubscribedDataTypes)}");Console.WriteLine($"🔧 Initializing RabbitMQ components...");        try
         {
             // Initialize RabbitMQ Publisher for sending data to Server
             publisher = new RabbitMQPublisher();
-            Console.WriteLine($"✅ RabbitMQ Publisher configured successfully.");            // Subscribe to ocean data exchange instead of using RPC
+            Console.WriteLine($"✅ RabbitMQ Publisher configured successfully.");            // Subscribe to ocean data exchange with ocean and area type specific routing
             var subscriber = new RabbitMQSubscriber($"{aggregatorID}_ocean_queue");
-            subscriber.SubscribeToTopic("ocean_data_exchange", "ocean.data.*", HandleWavyData);
-            Console.WriteLine($"✅ Subscribed to ocean data exchange with pattern: ocean.data.*");
+            
+            // Create routing key pattern based on aggregator's ocean and area type
+            string oceanPattern = aggregatorConfig.Ocean.ToLower();
+            string areaPattern = aggregatorConfig.AreaType.ToLower().Replace("-", "_");
+            string routingPattern = $"ocean.data.{oceanPattern}.{areaPattern}";
+            
+            subscriber.SubscribeToTopic("ocean_data_exchange", routingPattern, HandleWavyData);
+            Console.WriteLine($"✅ Subscribed to ocean data exchange with pattern: {routingPattern}");
+            Console.WriteLine($"   • Listening for data from Ocean: {aggregatorConfig.Ocean}, AreaType: {aggregatorConfig.AreaType}");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ Error configuring RabbitMQ: {ex.Message}");
             return;
-        }        Console.WriteLine($"🎯 {aggregatorID} ready and waiting for Wavy data...\n");
+        }Console.WriteLine($"🎯 {aggregatorID} ready and waiting for Wavy data...\n");
 
         // Process data and send to Server every 10 seconds
         var dataTask = Task.Run(async () => await ProcessAndSendData());
@@ -104,15 +109,15 @@ class Program
             var wavyMessage = JsonSerializer.Deserialize<WavyMessage>(message);
             if (wavyMessage != null)
             {
-                // Check if this aggregator is interested in this type of data
-                // (For now we'll accept all data, but this can be extended for filtering)
-                
-                // Add to processing queue
-                dataQueue.Enqueue(wavyMessage);
-                
+                // Log the data reception with geographic verification
                 Console.WriteLine($"📊 [{aggregatorID}] Received data from {wavyMessage.WavyId}: " +
                     $"SST={wavyMessage.SeaSurfaceTemperatureCelsius:F1}°C, " +
                     $"Lat={wavyMessage.Latitude:F4}, Lon={wavyMessage.Longitude:F4}");
+                
+                Console.WriteLine($"🌊 [{aggregatorID}] Routing: {routingKey} → Ocean: {aggregatorConfig?.Ocean}, AreaType: {aggregatorConfig?.AreaType}");
+                
+                // Add to processing queue
+                dataQueue.Enqueue(wavyMessage);
                 
                 // Log subscription match (for debugging)
                 if (aggregatorConfig != null && aggregatorConfig.SubscribedDataTypes.Any())
@@ -158,9 +163,7 @@ class Program
                 }
             }
         }
-    }
-
-    static void SendDataToServer(AggregatedData aggregatedData)
+    }    static void SendDataToServer(AggregatedData aggregatedData)
     {
         if (publisher == null)
         {
@@ -170,14 +173,27 @@ class Program
 
         try
         {
-            Console.WriteLine($"[{aggregatorID}] Enviando {aggregatedData.Messages.Count} mensagens para o Servidor via RabbitMQ...");
-            publisher.PublishData(aggregatedData);
-            Console.WriteLine($"[{aggregatorID}] Dados enviados com sucesso para o Servidor.");
+            // Determine the correct server based on the aggregator's region/continent
+            // This ensures data goes to the geographically appropriate server
+            string serverRoutingKey = DetermineServerRoutingKey();
+            
+            Console.WriteLine($"[{aggregatorID}] Enviando {aggregatedData.Messages.Count} mensagens para Servidor {serverId}...");
+            Console.WriteLine($"🌍 [{aggregatorID}] Routing: {continentName} ({continentCode}) → Server: {serverId}");
+            
+            // Use region-specific routing instead of generic routing
+            publisher.PublishMessage("server_data_exchange", serverRoutingKey, JsonSerializer.Serialize(aggregatedData));
+            Console.WriteLine($"[{aggregatorID}] Dados enviados com sucesso para o Servidor via routing key: {serverRoutingKey}");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[{aggregatorID}] Erro ao enviar dados para o Servidor: {ex.Message}");
         }
+    }
+
+    static string DetermineServerRoutingKey()
+    {
+        // Create routing key based on continent code to ensure data goes to correct regional server
+        return $"server.data.{continentCode.ToLower()}";
     }
 
     static async Task MonitorarComandoDesligar()
