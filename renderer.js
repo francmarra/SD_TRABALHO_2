@@ -8,6 +8,7 @@ let runningProcesses = new Set();
 document.addEventListener('DOMContentLoaded', () => {
     updateProcessList();
     setupEventListeners();
+    initializeAccordions();
     setInterval(updateProcessList, 2000); // Update every 2 seconds
 });
 
@@ -397,16 +398,29 @@ function addServerToList(serverId, processId) {
         // Create servers section in the sidebar
         const sidebar = document.querySelector('.sidebar');
         const serverSection = document.querySelector('.section'); // Get the existing server section
-        
-        serversSection = document.createElement('div');
+          serversSection = document.createElement('div');
         serversSection.className = 'section servers-section';
         serversSection.innerHTML = `
-            <div class="section-title">Regional Servers</div>
-            <div id="server-list"></div>
+            <div class="section-title accordion-header" onclick="toggleAccordion('regional-servers')">
+                <span>🌍 Regional Servers</span>
+                <span class="accordion-arrow" id="regional-servers-arrow">▼</span>
+            </div>
+            <div class="accordion-content" id="regional-servers-content">
+                <div id="server-list"></div>
+            </div>
         `;
-        
-        // Insert after the main server section
+          // Insert after the main server section
         serverSection.parentNode.insertBefore(serversSection, serverSection.nextSibling);
+        
+        // Initialize the accordion state for the newly created section
+        const content = document.getElementById('regional-servers-content');
+        const arrow = document.getElementById('regional-servers-arrow');
+        if (content && arrow) {
+            // Keep it open by default since it's actively being used
+            content.classList.remove('collapsed');
+            arrow.classList.remove('rotated');
+            arrow.textContent = '▼';
+        }
     }
     
     const list = document.getElementById('server-list');
@@ -712,6 +726,33 @@ function highlightErrors() {
 }
 
 // Accordion functionality
+function initializeAccordions() {
+    // Initialize accordion states - keep Aggregators open by default, others collapsed
+    const accordions = [
+        { id: 'aggregators', defaultOpen: true }, 
+        { id: 'wavys', defaultOpen: false },
+        { id: 'regional-quick-start', defaultOpen: false },
+        { id: 'regional-servers', defaultOpen: true } // This will be created dynamically when servers are added
+    ];
+    
+    accordions.forEach(accordion => {
+        const content = document.getElementById(`${accordion.id}-content`);
+        const arrow = document.getElementById(`${accordion.id}-arrow`);
+        
+        if (content && arrow) {
+            if (!accordion.defaultOpen) {
+                content.classList.add('collapsed');
+                arrow.classList.add('rotated');
+                arrow.textContent = '▶';
+            } else {
+                content.classList.remove('collapsed');
+                arrow.classList.remove('rotated');
+                arrow.textContent = '▼';
+            }
+        }
+    });
+}
+
 function toggleAccordion(id) {
     const content = document.getElementById(`${id}-content`);
     const arrow = document.getElementById(`${id}-arrow`);

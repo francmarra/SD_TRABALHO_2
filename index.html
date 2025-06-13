@@ -22,7 +22,7 @@
         
         <div class="main-content">
             <div class="sidebar">                <div class="section">
-                    <div class="section-title">Server</div>
+                    <div class="section-title">🖥️ Server</div>
                     <div class="component-item" data-component="server" onclick="selectComponent('server')">
                         <div class="component-name">Servidor</div>
                         <div class="component-status stopped" id="status-server">Stopped</div>
@@ -35,25 +35,35 @@
                         <button class="btn" onclick="startServer()" id="btn-server">Start Basic Server</button>
                     </div>
                 </div><div class="section">
-                    <div class="section-title">Aggregators</div>
-                    <div class="component-controls">
-                        <div class="input-group">
-                            <input type="text" id="aggregator-id" placeholder="e.g., EU-Agr01, NA-Agr02, AS-Agr03, etc." />
-                            <button class="btn" onclick="startAggregator()">Start</button>
-                        </div>
-                        <button class="btn create-btn" onclick="showCreateAggregatorForm()">+ Create New</button>
+                    <div class="section-title accordion-header" onclick="toggleAccordion('aggregators')">
+                        <span>🔗 Aggregators</span>
+                        <span class="accordion-arrow" id="aggregators-arrow">▼</span>
                     </div>
-                    <div id="aggregator-list"></div>
+                    <div class="accordion-content" id="aggregators-content">
+                        <div class="component-controls">
+                            <div class="input-group">
+                                <input type="text" id="aggregator-id" placeholder="e.g., EU-Agr01, NA-Agr02, AS-Agr03, etc." />
+                                <button class="btn" onclick="startAggregator()">Start</button>
+                            </div>
+                            <button class="btn create-btn" onclick="showCreateAggregatorForm()">+ Create New</button>
+                        </div>
+                        <div id="aggregator-list"></div>
+                    </div>
                 </div>                <div class="section">
-                    <div class="section-title">Wavys</div>
-                    <div class="component-controls">
-                        <div class="input-group">
-                            <input type="text" id="wavy-id" placeholder="e.g., Wavy01, Wavy02, etc." />
-                            <button class="btn" onclick="startWavy()">Start</button>
-                        </div>
-                        <button class="btn create-btn" onclick="showCreateWavyForm()">+ Create New</button>
+                    <div class="section-title accordion-header" onclick="toggleAccordion('wavys')">
+                        <span>🌊 Wavys</span>
+                        <span class="accordion-arrow" id="wavys-arrow">▼</span>
                     </div>
-                    <div id="wavy-list"></div>
+                    <div class="accordion-content" id="wavys-content">
+                        <div class="component-controls">
+                            <div class="input-group">
+                                <input type="text" id="wavy-id" placeholder="e.g., Wavy01, Wavy02, etc." />
+                                <button class="btn" onclick="startWavy()">Start</button>
+                            </div>
+                            <button class="btn create-btn" onclick="showCreateWavyForm()">+ Create New</button>
+                        </div>
+                        <div id="wavy-list"></div>
+                    </div>
                 </div><div class="section">
                     <div class="section-title accordion-header" onclick="toggleAccordion('regional-quick-start')">
                         <span>🚀 Regional Quick Start</span>
