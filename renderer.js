@@ -18,7 +18,17 @@ function setupEventListeners() {
         if (e.key === 'Enter') {
             sendCommand();
         }
-    });    // Keyboard shortcuts
+    });
+
+    // Server ID input - add event listener after DOM is ready
+    const serverIdInput = document.getElementById('server-id');
+    if (serverIdInput) {
+        serverIdInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                startServerWithId();
+            }
+        });
+    }// Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         // Ctrl+` to focus terminal input
         if (e.ctrlKey && e.key === '`') {
@@ -32,6 +42,15 @@ function setupEventListeners() {
         if (e.ctrlKey && e.shiftKey && e.key === 'S') {
             e.preventDefault();
             startServer();
+        }
+
+        // Ctrl+Shift+R to focus server ID input for regional servers
+        if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+            e.preventDefault();
+            const serverIdInput = document.getElementById('server-id');
+            if (serverIdInput) {
+                serverIdInput.focus();
+            }
         }
 
         // Ctrl+Shift+A to start all
@@ -138,8 +157,32 @@ async function startServer() {
         updateComponentStatus('server', true);
         addToOutput('server', '[MANAGER] Starting Servidor...\n');
         selectComponent('server');
+        // Clear the server ID input field
+        document.getElementById('server-id').value = '';
     } else {
         alert(`Failed to start server: ${result.message}`);
+    }
+}
+
+async function startServerWithId() {
+    const serverId = document.getElementById('server-id').value.trim();
+    
+    if (!serverId) {
+        // If no ID provided, start basic server
+        return startServer();
+    }
+
+    const processId = `server-${serverId}`;
+    const result = await ipcRenderer.invoke('start-server-instance', serverId);
+
+    if (result.success) {
+        runningProcesses.add(processId);
+        addServerToList(serverId, processId);
+        addToOutput(processId, `[MANAGER] Starting Regional Server ${serverId}...\n`);
+        selectComponent(processId);
+        document.getElementById('server-id').value = '';
+    } else {
+        alert(`Failed to start server instance: ${result.message}`);
     }
 }
 

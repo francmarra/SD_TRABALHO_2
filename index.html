@@ -21,15 +21,20 @@
         </div>
         
         <div class="main-content">
-            <div class="sidebar">
-                <div class="section">
+            <div class="sidebar">                <div class="section">
                     <div class="section-title">Server</div>
                     <div class="component-item" data-component="server" onclick="selectComponent('server')">
                         <div class="component-name">Servidor</div>
                         <div class="component-status stopped" id="status-server">Stopped</div>
                     </div>
-                    <button class="btn" onclick="startServer()" id="btn-server">Start Server</button>
-                </div>                <div class="section">
+                    <div class="component-controls">
+                        <div class="input-group">
+                            <input type="text" id="server-id" placeholder="e.g., EU-S, NA-S, etc. (optional)" />
+                            <button class="btn" onclick="startServerWithId()">Start</button>
+                        </div>
+                        <button class="btn" onclick="startServer()" id="btn-server">Start Basic Server</button>
+                    </div>
+                </div><div class="section">
                     <div class="section-title">Aggregators</div>
                     <div class="component-controls">
                         <div class="input-group">
@@ -98,9 +103,10 @@
                         • <strong>Agregador</strong> - Data aggregation service<br>
                         • <strong>Wavy</strong> - Ocean sensor data generator<br><br>                        <span class="success-text">Instructions:</span><br>
                         1. ✅ Server starts automatically on launch<br>
-                        2. Use <strong>Regional Quick Start</strong> to deploy complete regional systems<br>
-                        3. Use <strong>+ Create New</strong> buttons to create custom Aggregators and Wavy sensors<br>
-                        4. Or manually start existing components using the input fields<br><br><span class="info-text">Regional Systems:</span><br>
+                        2. Use <strong>Start Basic Server</strong> for the main server, or enter a Regional Server ID (e.g., EU-S, NA-S) to create a dedicated regional server<br>
+                        3. Use <strong>Regional Quick Start</strong> to deploy complete regional systems<br>
+                        4. Use <strong>+ Create New</strong> buttons to create custom Aggregators and Wavy sensors<br>
+                        5. Or manually start existing components using the input fields<br><br><span class="info-text">Regional Systems:</span><br>
                         • <strong>Europe (EU)</strong>: EU-S server, 4 aggregators, 4 wavy sensors<br>
                         • <strong>North America (NA)</strong>: NA-S server, 5 aggregators, 7 wavy sensors<br>
                         • <strong>South America (SA)</strong>: SA-S server, 4 aggregators, 6 wavy sensors<br>
@@ -109,6 +115,7 @@
                         • <strong>Oceania (OC)</strong>: OC-S server, 5 aggregators, 6 wavy sensors<br>
                         • <strong>Antarctica (AQ)</strong>: AQ-S server, 1 aggregator, 4 wavy sensors<br><br>                        <span class="info-text">Keyboard Shortcuts:</span><br>
                         • <strong>Ctrl+Shift+S</strong> - Start Server<br>
+                        • <strong>Ctrl+Shift+R</strong> - Focus Regional Server Input<br>
                         • <strong>Ctrl+Shift+A</strong> - Start All Components<br>
                         • <strong>Ctrl+Shift+X</strong> - Stop All Processes<br>
                         • <strong>Ctrl+Shift+G</strong> - Create New Aggregator<br>
