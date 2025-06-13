@@ -1,3 +1,43 @@
+/* Custom Scrollbar Styles - Match Terminal Theme */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background-color: #111;
+    border-radius: 6px;
+    border: 1px solid #333;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #444;
+    border-radius: 6px;
+    border: 1px solid #555;
+    transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #555;
+    border-color: #666;
+}
+
+::-webkit-scrollbar-thumb:active {
+    background-color: #666;
+    border-color: #777;
+}
+
+::-webkit-scrollbar-corner {
+    background-color: #111;
+    border: 1px solid #333;
+}
+
+/* For Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #444 #111;
+}
+
 /* styles.css - Distributed System Manager */
 
 * {
