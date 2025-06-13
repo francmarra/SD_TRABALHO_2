@@ -259,6 +259,11 @@ body {
     word-wrap: break-word;
 }
 
+/* Adjust terminal content height when input is visible */
+.terminal.input-visible .terminal-content {
+    height: calc(100% - 30px - 50px); /* Subtract terminal controls height and input height */
+}
+
 .terminal-input {
     position: absolute;
     bottom: 0;

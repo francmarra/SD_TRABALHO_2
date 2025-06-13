@@ -458,14 +458,15 @@ function selectComponent(componentId) {
     }
 
     currentComponent = componentId;
-    updateTerminalContent();
-
-    // Show terminal input for this component
+    updateTerminalContent();    // Show terminal input for this component
     const terminalInput = document.getElementById('terminal-input');
+    const terminal = document.querySelector('.terminal');
     if (runningProcesses.has(componentId)) {
         terminalInput.style.display = 'block';
+        terminal.classList.add('input-visible');
     } else {
         terminalInput.style.display = 'none';
+        terminal.classList.remove('input-visible');
     }
 }
 
