@@ -62,25 +62,16 @@ namespace Shared.MongoDB
         public async Task<ConfigWavy?> GetWavyConfigAsync(string wavyId)
         {
             return await _configWavyCollection.Find(x => x.WavyId == wavyId).FirstOrDefaultAsync();
-        }
-
-        // Get all wavy configurations
+        }        // Get all wavy configurations
         public async Task<List<ConfigWavy>> GetAllWavyConfigsAsync()
         {
             return await _configWavyCollection.Find(_ => true).ToListAsync();
         }
 
-        // Get wavys by continent code
-        public async Task<List<ConfigWavy>> GetWavyConfigsByContinentAsync(string continentCode)
+        // Get active wavy configurations
+        public async Task<List<ConfigWavy>> GetActiveWavyConfigsAsync()
         {
-            return await _configWavyCollection.Find(x => x.ContinentCode == continentCode).ToListAsync();
-        }
-
-        // Get wavys by aggregator ID
-        public async Task<List<ConfigWavy>> GetWavyConfigsByAggregatorAsync(string aggregatorId)
-        {
-            return await _configWavyCollection.Find(x => x.AggregatorId == aggregatorId).ToListAsync();
-        }
+            return await _configWavyCollection.Find(x => x.IsActive && x.Status == 1).ToListAsync();        }
 
         // Update wavy status
         public async Task UpdateWavyStatusAsync(string wavyId, int status, DateTime lastSync)
@@ -91,12 +82,16 @@ namespace Shared.MongoDB
                 .Set(x => x.LastSync, lastSync);
             
             await _configWavyCollection.UpdateOneAsync(filter, update);
-        }
-
-        // Insert wavy config
+        }        // Insert wavy config
         public async Task InsertWavyConfigAsync(ConfigWavy config)
         {
             await _configWavyCollection.InsertOneAsync(config);
+        }
+
+        // Clear all wavy configs
+        public async Task ClearAllWavyConfigsAsync()
+        {
+            await _configWavyCollection.DeleteManyAsync(_ => true);
         }
 
         // Clear and insert all wavy configs
@@ -143,26 +138,13 @@ namespace Shared.MongoDB
             {
                 await _configServerCollection.InsertManyAsync(configs);
             }
-        }
+        }        // ========== CONTINENT-SPECIFIC UTILITY METHODS ==========
 
-        // ========== CONTINENT-SPECIFIC UTILITY METHODS ==========
-
-        // Get all active continent codes
+        // Get all active continent codes (for servers/aggregators only)
         public async Task<List<string>> GetActiveContinentCodesAsync()
         {
             var servers = await _configServerCollection.Find(x => x.IsActive).ToListAsync();
             return servers.Select(s => s.ContinentCode).Distinct().ToList();
-        }
-
-        // Get full continent configuration (server + aggregators + wavys)
-        public async Task<(ConfigServer? server, List<ConfigAgr> aggregators, List<ConfigWavy> wavys)> 
-            GetFullContinentConfigAsync(string continentCode)
-        {
-            var server = await GetServerConfigByContinentAsync(continentCode);
-            var aggregators = await GetAgrConfigsByContinentAsync(continentCode);
-            var wavys = await GetWavyConfigsByContinentAsync(continentCode);
-            
-            return (server, aggregators, wavys);
         }
     }
 }

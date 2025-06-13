@@ -32,40 +32,40 @@
                 </div>
 
                 <div class="section">
-                    <div class="section-title">Aggregators</div>
-                    <div class="input-group">
-                        <input type="text" id="aggregator-id" placeholder="e.g., EU-Agr01" />
+                    <div class="section-title">Aggregators</div>                    <div class="input-group">
+                        <input type="text" id="aggregator-id" placeholder="e.g., EU-Agr01, NA-Agr02, AS-Agr03, etc." />
                         <button class="btn" onclick="startAggregator()">Start</button>
                     </div>
                     <div id="aggregator-list"></div>
                 </div>
 
                 <div class="section">
-                    <div class="section-title">Wavys</div>
-                    <div class="input-group">
-                        <input type="text" id="wavy-id" placeholder="e.g., EU-Wavy01" />
+                    <div class="section-title">Wavys</div>                    <div class="input-group">
+                        <input type="text" id="wavy-id" placeholder="e.g., Wavy01, Wavy02, etc." />
                         <button class="btn" onclick="startWavy()">Start</button>
                     </div>
                     <div id="wavy-list"></div>
                 </div>                <div class="section">
-                    <div class="section-title accordion-header" onclick="toggleAccordion('quick-start')">
-                        <span>Quick Start</span>
-                        <span class="accordion-arrow" id="quick-start-arrow">▼</span>
+                    <div class="section-title accordion-header" onclick="toggleAccordion('ocean-quick-start')">
+                        <span>🌊 Quick Start</span>
+                        <span class="accordion-arrow" id="ocean-quick-start-arrow">▼</span>
                     </div>
-                    <div class="accordion-content" id="quick-start-content">
+                    <div class="accordion-content" id="ocean-quick-start-content">
                         <div class="startup-controls">
                             <div class="continent-row">
-                                <button class="btn continent-btn" onclick="quickStartRegion('EU')">Europe<br>(EU)</button>
-                                <button class="btn continent-btn" onclick="quickStartRegion('NA')">N. America<br>(NA)</button>
-                                <button class="btn continent-btn" onclick="quickStartRegion('SA')">S. America<br>(SA)</button>
+                                <button class="btn continent-btn" onclick="quickStartWavySet(1)">Atlantic<br>Ocean</button>
+                                <button class="btn continent-btn" onclick="quickStartWavySet(2)">North<br>Atlantic</button>
+                                <button class="btn continent-btn" onclick="quickStartWavySet(3)">Pacific<br>Ocean</button>
                             </div>
                             <div class="continent-row">
-                                <button class="btn continent-btn" onclick="quickStartRegion('AF')">Africa<br>(AF)</button>
-                                <button class="btn continent-btn" onclick="quickStartRegion('AS')">Asia<br>(AS)</button>
-                                <button class="btn continent-btn" onclick="quickStartRegion('OC')">Oceania<br>(OC)</button>
+                                <button class="btn continent-btn" onclick="quickStartWavySet(4)">South<br>Pacific</button>
+                                <button class="btn continent-btn" onclick="quickStartWavySet(5)">Indian<br>Ocean</button>
+                                <button class="btn continent-btn" onclick="quickStartWavySet(6)">Arctic<br>Ocean</button>
                             </div>
                             <div class="continent-row">
-                                <button class="btn continent-btn full-width" onclick="quickStartRegion('AQ')">Antarctica<br>(AQ)</button>
+                                <button class="btn continent-btn" onclick="quickStartWavySet(7)">Southern<br>Ocean</button>
+                                <button class="btn continent-btn" onclick="quickStartWavySet(8)">Med/Carib<br>Seas</button>
+                                <button class="btn continent-btn" onclick="quickStartWavySet(9)">Antarctic<br>Waters</button>
                             </div>
                         </div>
                     </div>
@@ -85,8 +85,7 @@
                     <button class="btn" onclick="highlightErrors()">Highlight Errors</button>
                     <span id="message-count" class="message-counter">0 messages</span>
                 </div>
-                <div class="terminal-content" id="terminal-content">
-                    <div class="welcome-message">
+                <div class="terminal-content" id="terminal-content">                    <div class="welcome-message">
                         ═══════════════════════════════════════════════════════════════════════════════════<br>
                         🚀 <strong>DISTRIBUTED SYSTEM MANAGER</strong> 🚀<br>
                         ═══════════════════════════════════════════════════════════════════════════════════<br><br>
@@ -94,19 +93,20 @@
                         <span class="info-text">Components:</span><br>
                         • <strong>Servidor</strong> - Central data collection server<br>
                         • <strong>Agregador</strong> - Data aggregation service<br>
-                        • <strong>Wavy</strong> - Sensor data generator<br><br>
-                        <span class="success-text">Instructions:</span><br>
-                        1. ✅ Server starts automatically on launch (e.g., EU-S, NA-S)<br>
-                        2. Start one or more Aggregators (e.g., EU-Agr01, NA-Agr01)<br>
-                        3. Start Wavy components (e.g., EU-Wavy01, NA-Wavy02)<br><br>
-                        <span class="info-text">Continents:</span> EU (Europe), NA (North America), SA (South America), AF (Africa), AS (Asia), OC (Oceania), AQ (Antarctica)<br><br>
+                        • <strong>Wavy</strong> - Ocean sensor data generator<br><br>                        <span class="success-text">Instructions:</span><br>
+                        1. ✅ Server starts automatically on launch<br>
+                        2. Start Maritime Aggregators (e.g., EU-Agr01, NA-Agr02, AS-Agr03)<br>
+                        3. Start Wavy sensors (e.g., Wavy01, Wavy02, Wavy03)<br><br>
+                        <span class="info-text">Wavy System:</span> Wavy01-Wavy26 (global ocean monitoring sensors)<br>
+                        <span class="info-text">Maritime Aggregators:</span> 28 specialized aggregators by region, ocean, and area type<br>
+                        <span class="info-text">Data Subscriptions:</span> Targeted sensor data filtering per maritime research area<br><br>
                         <span class="info-text">Keyboard Shortcuts:</span><br>
                         • <strong>Ctrl+Shift+S</strong> - Start Server<br>
                         • <strong>Ctrl+Shift+A</strong> - Start All Components<br>
                         • <strong>Ctrl+Shift+X</strong> - Stop All Processes<br>
                         • <strong>Ctrl+`</strong> - Focus Terminal Input<br><br>
                         Click on any component to view its output in this terminal.<br>
-                        Use the "Quick Start" buttons for automatic continent setup.<br><br>
+                        Use "Quick Start" buttons for easy ocean region deployment.<br><br>
                         <span class="info-text">Ready to begin! 🎯</span><br>
                         ═══════════════════════════════════════════════════════════════════════════════════
                     </div>
