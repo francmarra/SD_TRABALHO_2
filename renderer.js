@@ -18,9 +18,7 @@ function setupEventListeners() {
         if (e.key === 'Enter') {
             sendCommand();
         }
-    });
-
-    // Keyboard shortcuts
+    });    // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         // Ctrl+` to focus terminal input
         if (e.ctrlKey && e.key === '`') {
@@ -47,7 +45,25 @@ function setupEventListeners() {
             e.preventDefault();
             stopAllProcesses();
         }
-    });    // IPC listeners
+
+        // Ctrl+Shift+G to create new aggregator
+        if (e.ctrlKey && e.shiftKey && e.key === 'G') {
+            e.preventDefault();
+            showCreateAggregatorForm();
+        }
+
+        // Ctrl+Shift+W to create new wavy
+        if (e.ctrlKey && e.shiftKey && e.key === 'W') {
+            e.preventDefault();
+            showCreateWavyForm();
+        }
+
+        // Escape to close modals
+        if (e.key === 'Escape') {
+            hideCreateAggregatorForm();
+            hideCreateWavyForm();
+        }
+    });// IPC listeners
     ipcRenderer.on('process-output', (event, processId, output) => {
         if (!componentOutputs.has(processId)) {
             componentOutputs.set(processId, '');
@@ -88,7 +104,7 @@ function setupEventListeners() {
         runningProcesses.add('server');
         updateComponentStatus('server', true);
         addToOutput('server', '[MANAGER] Server auto-started on application launch.\n');
-        selectComponent('server');          // Show welcome message with auto-start info
+        selectComponent('server');        // Show welcome message with auto-start info
         const terminalContent = document.getElementById('terminal-content');
         terminalContent.innerHTML = `
             <div class="welcome-message">
@@ -96,7 +112,11 @@ function setupEventListeners() {
                 <span class="success-text">✅ Servidor is now running automatically</span><br><br>
                 <span class="info-text">Next Steps:</span><br>
                 • Use <strong>Regional Quick Start</strong> to deploy complete regional systems<br>
-                • Or manually start Aggregators and Wavy components<br><br>                <span class="info-text">Regional Quick Start Options:</span><br>
+                • Use <strong>+ Create New</strong> buttons to create custom Aggregators and Wavy sensors<br>
+                • Or manually start existing Aggregators and Wavy components<br><br>
+                <span class="info-text">Creation Shortcuts:</span><br>
+                • <strong>Ctrl+Shift+G</strong> - Create New Aggregator<br>
+                • <strong>Ctrl+Shift+W</strong> - Create New Wavy Sensor<br><br><span class="info-text">Regional Quick Start Options:</span><br>
                 • <strong>Europe (EU)</strong> - 4 aggregators, 4 wavy sensors (Atlantic/Arctic coverage)<br>
                 • <strong>North America (NA)</strong> - 5 aggregators, 7 wavy sensors (Atlantic/Pacific/Arctic coverage)<br>
                 • <strong>South America (SA)</strong> - 4 aggregators, 6 wavy sensors (Atlantic/Pacific coverage)<br>
@@ -907,5 +927,156 @@ document.addEventListener('DOMContentLoaded', () => {
         quickStartContent.classList.remove('collapsed');
         quickStartArrow.classList.remove('rotated');
         quickStartArrow.textContent = '▼';
+    }
+});
+
+// Component creation functions
+function showCreateAggregatorForm() {
+    document.getElementById('create-aggregator-modal').style.display = 'flex';
+}
+
+function hideCreateAggregatorForm() {
+    document.getElementById('create-aggregator-modal').style.display = 'none';
+    document.getElementById('create-aggregator-form').reset();
+}
+
+function showCreateWavyForm() {
+    document.getElementById('create-wavy-modal').style.display = 'flex';
+}
+
+function hideCreateWavyForm() {
+    document.getElementById('create-wavy-modal').style.display = 'none';
+    document.getElementById('create-wavy-form').reset();
+}
+
+async function createAggregator(event) {
+    event.preventDefault();
+    
+    const formData = {
+        id: document.getElementById('aggr-id').value.trim(),
+        region: document.getElementById('aggr-region').value,
+        ocean: document.getElementById('aggr-ocean').value,
+        areaType: document.getElementById('aggr-area-type').value,
+        latitude: parseFloat(document.getElementById('aggr-latitude').value),
+        longitude: parseFloat(document.getElementById('aggr-longitude').value),
+        dataTypes: Array.from(document.querySelectorAll('#create-aggregator-form .checkbox-group input:checked'))
+                        .map(cb => cb.value)
+    };
+
+    // Validation
+    if (!formData.id || !formData.region || !formData.ocean || !formData.areaType) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    if (isNaN(formData.latitude) || isNaN(formData.longitude)) {
+        alert('Please enter valid latitude and longitude values.');
+        return;
+    }
+
+    if (formData.dataTypes.length === 0) {
+        alert('Please select at least one data type.');
+        return;
+    }
+
+    try {
+        const result = await ipcRenderer.invoke('create-aggregator', formData);
+        if (result.success) {
+            hideCreateAggregatorForm();
+            
+            // Show success message in terminal
+            const terminalContent = document.getElementById('terminal-content');
+            terminalContent.innerHTML += `
+                <div class="success-text">[MANAGER] Successfully created aggregator ${formData.id}</div>
+                <div class="info-text">- Region: ${formData.region}</div>
+                <div class="info-text">- Ocean: ${formData.ocean}</div>
+                <div class="info-text">- Location: ${formData.latitude}, ${formData.longitude}</div>
+                <div class="info-text">- Data Types: ${formData.dataTypes.join(', ')}</div>
+                <div class="info-text">You can now start this aggregator using the input field above.</div><br>
+            `;
+            terminalContent.scrollTop = terminalContent.scrollHeight;
+            
+            // Pre-fill the aggregator ID input
+            setTimeout(() => {
+                document.getElementById('aggregator-id').value = formData.id;
+            }, 500);
+        } else {
+            alert(`Failed to create aggregator: ${result.message}`);
+        }
+    } catch (error) {
+        alert(`Error creating aggregator: ${error.message}`);
+    }
+}
+
+async function createWavy(event) {
+    event.preventDefault();
+    
+    const formData = {
+        id: document.getElementById('wavy-id-create').value.trim(),
+        latitude: parseFloat(document.getElementById('wavy-latitude').value),
+        longitude: parseFloat(document.getElementById('wavy-longitude').value),
+        ocean: document.getElementById('wavy-ocean').value,
+        areaType: document.getElementById('wavy-area-type').value,
+        regionCoverage: document.getElementById('wavy-region-coverage').value.trim(),
+        dataInterval: parseInt(document.getElementById('wavy-data-interval').value),
+        status: parseInt(document.getElementById('wavy-status').value)
+    };
+
+    // Validation
+    if (!formData.id || !formData.ocean || !formData.areaType || !formData.regionCoverage) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    if (isNaN(formData.latitude) || isNaN(formData.longitude)) {
+        alert('Please enter valid latitude and longitude values.');
+        return;
+    }
+
+    if (isNaN(formData.dataInterval) || formData.dataInterval < 1000) {
+        alert('Data interval must be at least 1000 milliseconds.');
+        return;
+    }
+
+    try {
+        const result = await ipcRenderer.invoke('create-wavy', formData);
+        if (result.success) {
+            hideCreateWavyForm();
+            
+            // Show success message in terminal
+            const terminalContent = document.getElementById('terminal-content');
+            terminalContent.innerHTML += `
+                <div class="success-text">[MANAGER] Successfully created wavy sensor ${formData.id}</div>
+                <div class="info-text">- Ocean: ${formData.ocean}</div>
+                <div class="info-text">- Area Type: ${formData.areaType}</div>
+                <div class="info-text">- Location: ${formData.latitude}, ${formData.longitude}</div>
+                <div class="info-text">- Region Coverage: ${formData.regionCoverage}</div>
+                <div class="info-text">- Data Interval: ${formData.dataInterval}ms</div>
+                <div class="info-text">You can now start this wavy sensor using the input field above.</div><br>
+            `;
+            terminalContent.scrollTop = terminalContent.scrollHeight;
+            
+            // Pre-fill the wavy ID input
+            setTimeout(() => {
+                document.getElementById('wavy-id').value = formData.id;
+            }, 500);
+        } else {
+            alert(`Failed to create wavy: ${result.message}`);
+        }
+    } catch (error) {
+        alert(`Error creating wavy: ${error.message}`);
+    }
+}
+
+// Close modals when clicking outside
+document.addEventListener('click', (event) => {
+    const aggregatorModal = document.getElementById('create-aggregator-modal');
+    const wavyModal = document.getElementById('create-wavy-modal');
+    
+    if (event.target === aggregatorModal) {
+        hideCreateAggregatorForm();
+    }
+    if (event.target === wavyModal) {
+        hideCreateWavyForm();
     }
 });

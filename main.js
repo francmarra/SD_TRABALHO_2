@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 let mainWindow;
 let processes = new Map();
@@ -210,30 +211,157 @@ ipcMain.handle('stop-process', (event, processId) => {
 });
 
 ipcMain.handle('get-processes', () => {
-    const processList = [];
-    processes.forEach((proc, id) => {
-        processList.push({
-            id,
-            alive: proc && !proc.killed,
-            pid: proc ? proc.pid : null
+    const processArray = [];
+    processes.forEach((process, id) => {
+        processArray.push({
+            id: id,
+            alive: process && !process.killed
         });
     });
-    return processList;
+    return processArray;
 });
 
-ipcMain.handle('send-input', (event, processId, input) => {
+ipcMain.handle('send-input', (event, processId, command) => {
     const process = processes.get(processId);
-    if (process && process.stdin && !process.stdin.destroyed && !process.killed) {
+    if (process && !process.killed && process.stdin && !process.stdin.destroyed) {
         try {
-            process.stdin.write(input + '\n');
+            process.stdin.write(command + '\n');
             return true;
         } catch (error) {
-            console.error('Error sending input to process:', error);
+            console.error(`Error sending input to ${processId}:`, error);
             return false;
         }
     }
     return false;
 });
+
+// Component creation handlers
+ipcMain.handle('create-aggregator', async (event, formData) => {
+    try {
+        const configPath = path.join(__dirname, 'configs', 'config_aggregator_subscriptions.csv');
+        
+        // Read existing config
+        let configContent = '';
+        if (fs.existsSync(configPath)) {
+            configContent = fs.readFileSync(configPath, 'utf8');
+        } else {
+            // Create file with header if it doesn't exist
+            configContent = 'AggregatorId,Region,Ocean,AreaType,Latitude,Longitude,SubscribedDataTypes\n';
+        }
+        
+        // Check if aggregator ID already exists
+        const lines = configContent.split('\n');
+        const existingIds = lines.slice(1).map(line => line.split(',')[0]).filter(id => id.trim());
+        
+        if (existingIds.includes(formData.id)) {
+            return { success: false, message: `Aggregator ID ${formData.id} already exists` };
+        }
+        
+        // Create new aggregator entry
+        const dataTypesString = `"${formData.dataTypes.join(',')}"`;
+        const newEntry = `${formData.id},${formData.region},${formData.ocean},${formData.areaType},${formData.latitude},${formData.longitude},${dataTypesString}\n`;
+          // Append to config file
+        fs.appendFileSync(configPath, newEntry);
+        
+        // Insert into MongoDB
+        try {
+            await insertIntoMongoDB('aggregator', formData);
+            console.log(`Successfully inserted aggregator ${formData.id} into MongoDB`);
+        } catch (mongoError) {
+            console.error('MongoDB insertion failed:', mongoError);
+            // Don't fail the entire operation if MongoDB insertion fails
+        }
+        
+        return { success: true, message: `Aggregator ${formData.id} created successfully` };
+    } catch (error) {
+        console.error('Error creating aggregator:', error);
+        return { success: false, message: `Failed to create aggregator: ${error.message}` };
+    }
+});
+
+ipcMain.handle('create-wavy', async (event, formData) => {
+    try {
+        const configPath = path.join(__dirname, 'configs', 'config_wavy_oceanographic.csv');
+        
+        // Read existing config
+        let configContent = '';
+        if (fs.existsSync(configPath)) {
+            configContent = fs.readFileSync(configPath, 'utf8');
+        } else {
+            // Create file with header if it doesn't exist
+            configContent = 'WAVY_ID,status,last_sync,data_interval,is_active,latitude,longitude,ocean,area_type,region_coverage\n';
+        }
+        
+        // Check if wavy ID already exists
+        const lines = configContent.split('\n');
+        const existingIds = lines.slice(1).map(line => line.split(',')[0]).filter(id => id.trim());
+        
+        if (existingIds.includes(formData.id)) {
+            return { success: false, message: `Wavy ID ${formData.id} already exists` };
+        }
+        
+        // Create new wavy entry
+        const timestamp = new Date().toISOString();
+        const isActive = formData.status === 1 ? 'true' : 'false';
+        const newEntry = `${formData.id},${formData.status},${timestamp},${formData.dataInterval},${isActive},${formData.latitude},${formData.longitude},${formData.ocean},${formData.areaType},"${formData.regionCoverage}"\n`;
+          // Append to config file
+        fs.appendFileSync(configPath, newEntry);
+        
+        // Insert into MongoDB
+        try {
+            await insertIntoMongoDB('wavy', formData);
+            console.log(`Successfully inserted wavy ${formData.id} into MongoDB`);
+        } catch (mongoError) {
+            console.error('MongoDB insertion failed:', mongoError);
+            // Don't fail the entire operation if MongoDB insertion fails
+        }
+        
+        return { success: true, message: `Wavy ${formData.id} created successfully` };
+    } catch (error) {
+        console.error('Error creating wavy:', error);
+        return { success: false, message: `Failed to create wavy: ${error.message}` };
+    }
+});
+
+// Helper function to insert into MongoDB using ComponentCreator
+async function insertIntoMongoDB(componentType, formData) {
+    return new Promise((resolve, reject) => {
+        const componentCreatorPath = path.join(__dirname, 'ComponentCreator', 'bin', 'Debug', 'net9.0', 'ComponentCreator.exe');
+        const jsonData = JSON.stringify(formData);
+        
+        console.log(`Inserting ${componentType} into MongoDB:`, jsonData);
+        
+        const process = spawn(componentCreatorPath, [componentType, jsonData], {
+            stdio: ['pipe', 'pipe', 'pipe']
+        });
+        
+        let stdout = '';
+        let stderr = '';
+        
+        process.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+        
+        process.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+        
+        process.on('close', (code) => {
+            if (code === 0) {
+                console.log(`MongoDB insertion successful: ${stdout.trim()}`);
+                resolve({ success: true, message: stdout.trim() });
+            } else {
+                console.error(`MongoDB insertion failed (code ${code}): ${stderr}`);
+                reject(new Error(`ComponentCreator failed: ${stderr || stdout}`));
+            }
+        });
+        
+        process.on('error', (error) => {
+            console.error('Failed to start ComponentCreator:', error);
+            reject(error);
+        });
+    });
+}
 
 function startProcess(processId, component, args, componentId = null) {
     if (processes.has(processId)) {
@@ -244,7 +372,7 @@ function startProcess(processId, component, args, componentId = null) {
         const cwd = path.join(__dirname, component);
         
         // Check if directory exists
-        if (!require('fs').existsSync(cwd)) {
+        if (!fs.existsSync(cwd)) {
             return { success: false, message: `Directory ${cwd} does not exist` };
         }
 
