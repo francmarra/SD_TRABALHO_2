@@ -172,6 +172,8 @@ body {
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.2s;
+    /* Prevent horizontal overflow */
+    width: calc(100% - 5px);
 }
 
 .component-item:hover {
@@ -385,13 +387,23 @@ body {
 }
 
 .accordion-content {
-    max-height: 500px;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
+    max-height: 45vh; /* Use viewport height for better responsiveness */
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 5px;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
 }
 
 .accordion-content.collapsed {
     max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+}
+
+/* Component lists inside accordions need proper spacing */
+#aggregator-list, #wavy-list {
+    padding-bottom: 10px;
+    margin-top: 5px;
 }
 
 /* Map Tab Styles */
@@ -511,7 +523,7 @@ body {
 .component-controls {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    margin-bottom: 10px;
 }
 
 .create-btn {
